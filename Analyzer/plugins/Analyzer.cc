@@ -251,6 +251,7 @@ Analyzer::Analyzer(const edm::ParameterSet& iConfig)
   }
   //protection
   if(calibrateTOF_){ 
+      modGeometry.loadGeometry("CMS_GeomTree.root");
       tofCalculator.loadTimeOffset(timeOffset_);
   }
   /*
@@ -394,7 +395,9 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
   using namespace trigger;
 
   //if run change, update conditions
+  std::cout <<"Initial current run : " << currentRun_ << std::endl;
   if (currentRun_ != iEvent.id().run()) {
+    std::cout <<"Changing to current run : " << iEvent.id().run() << std::endl;
     currentRun_ = iEvent.id().run();
     //same protection bool to recompute with correct calibration
     if(calibrateTOF_){
@@ -1351,6 +1354,7 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
   unsigned int nMuons = 0;
   std::vector<float> muonE;
   std::vector<float> muonPt;
+  std::vector<float> muonPtErr;
   std::vector<float> muonEta;
   std::vector<float> muonPhi;
   std::vector<float> muonBeta;
@@ -1416,6 +1420,7 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
       muonBeta.push_back(mu->p()*1.0/0.1057);
       muonE.push_back(mu->energy());
       muonPt.push_back(mu->pt());
+      muonPtErr.push_back(mu->muonBestTrack()->ptError());
       muonEta.push_back(mu->eta());
       muonPhi.push_back(mu->phi());
       muonCharge.push_back(mu->charge());
@@ -2426,12 +2431,16 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
         dttof = &(*tofDtMap)[hscp.muonRef()];
         csctof = &(*tofCscMap)[hscp.muonRef()];
         // Only recompute using tofCalculator once we have calibration ready
-        /*
-        tofCalculator.computeTOF(muon, CSCSegmentColl, DTSegmentColl, 1);
-        tof = &tofCalculator.combinedTOF;
-        dttof = &tofCalculator.dtTOF;
-        csctof = &tofCalculator.cscTOF;
-        */
+        if(calibrateTOF_){ 
+            std::cout<<"Computing TOF with corrections" << std::endl;
+            auto muonRefCompute = hscp.muonRef(); 
+            tofCalculator.computeTOF(muonRefCompute, CSCSegmentColl, DTSegmentColl, 1,true);
+            std::cout << "Computed TOF, now accessing combined, DT and CSC TOF" << std::endl;
+            tof = &tofCalculator.combinedTOF;
+            dttof = &tofCalculator.dtTOF;
+            csctof = &tofCalculator.cscTOF;
+            std::cout<<"Done..." << std::endl;
+        }
       }
     } // end conditions for TOF including analysis variables
     
@@ -4030,6 +4039,17 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
     
     if (debug_ > 2 && trigInfo_ > 0) LogPrint(MOD) << "      >> Check if we pass Preselection";
     bool passPre = passPreselection(passedCutsArray, true);
+    if(passPre){
+        tuple->PostPreS_PVsIh->Fill(track->p(), globalIh_, eventWeight_);
+
+        if(track->ptError() / (track->pt()) < 1 && track_genTrackMiniIsoSumPtFix < globalMaxTIsol_){
+            tuple->PostPreS_PVsIhCutSigptAndIsoMass->Fill(track->p(), globalIh_, eventWeight_);
+        }
+        if(isSignal){
+            tuple->PostPreS_genPVsIh->Fill(genPt*cosh(genEta), globalIh_, eventWeight_);
+
+        }
+    }
 
     if (debug_ > 2 && trigInfo_ > 0) LogPrint(MOD) << "      >> Check if we pass Preselection with Sept8 cuts";
     bool passPreSept8 = passPreselection(passedCutsArraySept8, true);
@@ -6086,6 +6106,482 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
 
     }
 
+    //**** Mass reco + Fpix strategy ****
+
+    //VR1 pt>70 
+
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[3] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[8] && bestCandidateTrack->pt() >= 70) {
+        tuple->PostS_VR1_pt70_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_VR1_pt70_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_VR1_pt70_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_VR1_pt70_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_VR1_pt70_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_VR1_pt70_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_VR1_pt70_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_VR1_pt70_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+
+        //K&C scenario 1
+        tuple->PostS_VR1_pt70_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_VR1_pt70_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_VR1_pt70_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_VR1_pt70_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+
+        //K&C scenario 2
+        tuple->PostS_VR1_pt70_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_VR1_pt70_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_VR1_pt70_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_VR1_pt70_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+
+    //VR1 pt>100 
+
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[3] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[8] && bestCandidateTrack->pt() >= 100) {
+        tuple->PostS_VR1_pt100_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_VR1_pt100_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_VR1_pt100_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_VR1_pt100_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_VR1_pt100_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_VR1_pt100_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_VR1_pt100_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_VR1_pt100_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+
+        //K&C scenario 1
+        tuple->PostS_VR1_pt100_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_VR1_pt100_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_VR1_pt100_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_VR1_pt100_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+
+        //K&C scenario 2
+        tuple->PostS_VR1_pt100_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_VR1_pt100_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_VR1_pt100_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_VR1_pt100_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+   
+    //VR1 pt>200 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[3] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[8] && bestCandidateTrack->pt() >= 200) {
+        tuple->PostS_VR1_pt200_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_VR1_pt200_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_VR1_pt200_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_VR1_pt200_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_VR1_pt200_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_VR1_pt200_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_VR1_pt200_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_VR1_pt200_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+
+        //K&C scenario 1
+        tuple->PostS_VR1_pt200_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_VR1_pt200_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_VR1_pt200_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_VR1_pt200_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+
+        //K&C scenario 2
+        tuple->PostS_VR1_pt200_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_VR1_pt200_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_VR1_pt200_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_VR1_pt200_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+    //VR1 pt>300 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[3] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[8] && bestCandidateTrack->pt() >= 300) {
+        tuple->PostS_VR1_pt300_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_VR1_pt300_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_VR1_pt300_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_VR1_pt300_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_VR1_pt300_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_VR1_pt300_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_VR1_pt300_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_VR1_pt300_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+
+        //K&C scenario 1
+        tuple->PostS_VR1_pt300_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_VR1_pt300_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_VR1_pt300_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_VR1_pt300_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+
+        //K&C scenario 2
+        tuple->PostS_VR1_pt300_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_VR1_pt300_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_VR1_pt300_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_VR1_pt300_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+
+    //SR0  pt>70 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[8] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[11] && bestCandidateTrack->pt() >= 70 && maxIhSoFar > Ih_low && maxIhSoFar <= Ih_quantile) {
+        tuple->PostS_SR0_pt70_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_SR0_pt70_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_SR0_pt70_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_SR0_pt70_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_SR0_pt70_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_SR0_pt70_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_SR0_pt70_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_SR0_pt70_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+        //K&C scenario 1
+        tuple->PostS_SR0_pt70_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_SR0_pt70_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_SR0_pt70_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_SR0_pt70_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+        //K&C scenario 2
+        tuple->PostS_SR0_pt70_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_SR0_pt70_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_SR0_pt70_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_SR0_pt70_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+
+    //SR0 pt>100 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[8] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[11] && bestCandidateTrack->pt() >= 100 && maxIhSoFar > Ih_low && maxIhSoFar <= Ih_quantile) {
+        tuple->PostS_SR0_pt100_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_SR0_pt100_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_SR0_pt100_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_SR0_pt100_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_SR0_pt100_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_SR0_pt100_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_SR0_pt100_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_SR0_pt100_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+        //K&C scenario 1
+        tuple->PostS_SR0_pt100_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_SR0_pt100_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_SR0_pt100_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_SR0_pt100_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+        //K&C scenario 2
+        tuple->PostS_SR0_pt100_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_SR0_pt100_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_SR0_pt100_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_SR0_pt100_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+    //SR0 pt>200 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[8] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[11] && bestCandidateTrack->pt() >= 200 && maxIhSoFar > Ih_low && maxIhSoFar <= Ih_quantile) {
+        tuple->PostS_SR0_pt200_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_SR0_pt200_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_SR0_pt200_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_SR0_pt200_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_SR0_pt200_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_SR0_pt200_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_SR0_pt200_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_SR0_pt200_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+        //K&C scenario 1
+        tuple->PostS_SR0_pt200_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_SR0_pt200_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_SR0_pt200_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_SR0_pt200_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+
+        //K&C scenario 2
+        tuple->PostS_SR0_pt200_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_SR0_pt200_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_SR0_pt200_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_SR0_pt200_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+    //SR0 pt>300 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[8] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[11] && bestCandidateTrack->pt() >= 300 && maxIhSoFar > Ih_low && maxIhSoFar <= Ih_quantile) {
+        tuple->PostS_SR0_pt300_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_SR0_pt300_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_SR0_pt300_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_SR0_pt300_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_SR0_pt300_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_SR0_pt300_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_SR0_pt300_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_SR0_pt300_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+        //K&C scenario 1
+        tuple->PostS_SR0_pt300_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_SR0_pt300_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_SR0_pt300_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_SR0_pt300_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+
+        //K&C scenario 2
+        tuple->PostS_SR0_pt300_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_SR0_pt300_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_SR0_pt300_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_SR0_pt300_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+
+    //SR1 pt>70 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[9] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[11] && bestCandidateTrack->pt() >= 70 && maxIhSoFar > Ih_low && maxIhSoFar <= Ih_quantile) {
+        tuple->PostS_SR1_pt70_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_SR1_pt70_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_SR1_pt70_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_SR1_pt70_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_SR1_pt70_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_SR1_pt70_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_SR1_pt70_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_SR1_pt70_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+        //K&C scenario 1
+        tuple->PostS_SR1_pt70_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_SR1_pt70_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_SR1_pt70_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_SR1_pt70_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+        //K&C scenario 2
+        tuple->PostS_SR1_pt70_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_SR1_pt70_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_SR1_pt70_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_SR1_pt70_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+    //SR1 pt>100 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[9] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[11] && bestCandidateTrack->pt() >= 100 && maxIhSoFar > Ih_low && maxIhSoFar <= Ih_quantile) {
+        tuple->PostS_SR1_pt100_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_SR1_pt100_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_SR1_pt100_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_SR1_pt100_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_SR1_pt100_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_SR1_pt100_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_SR1_pt100_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_SR1_pt100_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+        //K&C scenario 1
+        tuple->PostS_SR1_pt100_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_SR1_pt100_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_SR1_pt100_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_SR1_pt100_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+        //K&C scenario 2
+        tuple->PostS_SR1_pt100_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_SR1_pt100_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_SR1_pt100_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_SR1_pt100_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+    //SR1 pt>200 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[9] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[11] && bestCandidateTrack->pt() >= 200 && maxIhSoFar > Ih_low && maxIhSoFar <= Ih_quantile) {
+        tuple->PostS_SR1_pt200_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_SR1_pt200_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_SR1_pt200_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_SR1_pt200_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_SR1_pt200_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_SR1_pt200_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_SR1_pt200_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_SR1_pt200_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+        //K&C scenario 1
+        tuple->PostS_SR1_pt200_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_SR1_pt200_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_SR1_pt200_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_SR1_pt200_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+
+        //K&C scenario 2
+        tuple->PostS_SR1_pt200_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_SR1_pt200_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_SR1_pt200_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_SR1_pt200_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+    //SR1 pt>300 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[9] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[11] && bestCandidateTrack->pt() >= 300 && maxIhSoFar > Ih_low && maxIhSoFar <= Ih_quantile) {
+        tuple->PostS_SR1_pt300_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_SR1_pt300_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_SR1_pt300_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_SR1_pt300_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_SR1_pt300_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_SR1_pt300_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_SR1_pt300_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_SR1_pt300_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+        //K&C scenario 1
+        tuple->PostS_SR1_pt300_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_SR1_pt300_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_SR1_pt300_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_SR1_pt300_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+
+        //K&C scenario 2
+        tuple->PostS_SR1_pt300_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_SR1_pt300_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_SR1_pt300_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_SR1_pt300_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+
+    //SR2 pt>70 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[10] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[11] && bestCandidateTrack->pt() >= 70 && maxIhSoFar > Ih_low && maxIhSoFar <= Ih_quantile) {
+        tuple->PostS_SR2_pt70_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_SR2_pt70_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_SR2_pt70_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_SR2_pt70_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_SR2_pt70_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_SR2_pt70_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_SR2_pt70_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_SR2_pt70_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+        //K&C scenario 1
+        tuple->PostS_SR2_pt70_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_SR2_pt70_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_SR2_pt70_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_SR2_pt70_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+        //K&C scenario 2
+        tuple->PostS_SR2_pt70_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_SR2_pt70_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_SR2_pt70_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_SR2_pt70_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+
+    //SR2 pt>100 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[10] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[11] && bestCandidateTrack->pt() >= 100 && maxIhSoFar > Ih_low && maxIhSoFar <= Ih_quantile) {
+        tuple->PostS_SR2_pt100_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_SR2_pt100_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_SR2_pt100_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_SR2_pt100_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_SR2_pt100_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_SR2_pt100_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_SR2_pt100_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_SR2_pt100_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+        //K&C scenario 1
+        tuple->PostS_SR2_pt100_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_SR2_pt100_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_SR2_pt100_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_SR2_pt100_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+        //K&C scenario 2
+        tuple->PostS_SR2_pt100_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_SR2_pt100_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_SR2_pt100_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_SR2_pt100_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+    //SR2 pt>200 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[10] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[11] && bestCandidateTrack->pt() >= 200 && maxIhSoFar > Ih_low && maxIhSoFar <= Ih_quantile) {
+        tuple->PostS_SR2_pt200_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_SR2_pt200_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_SR2_pt200_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_SR2_pt200_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_SR2_pt200_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_SR2_pt200_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_SR2_pt200_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_SR2_pt200_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+        //K&C scenario 1
+        tuple->PostS_SR2_pt200_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_SR2_pt200_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_SR2_pt200_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_SR2_pt200_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+
+        //K&C scenario 2
+        tuple->PostS_SR2_pt200_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_SR2_pt200_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_SR2_pt200_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_SR2_pt200_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+    //SR2 pt>300 
+    if ((1-bestCandidateProbQNoL1) > Fpix_quantiles[10] && (1-bestCandidateProbQNoL1) <= Fpix_quantiles[11] && bestCandidateTrack->pt() >= 300 && maxIhSoFar > Ih_low && maxIhSoFar <= Ih_quantile) {
+        tuple->PostS_SR2_pt300_Fpix_Mass->Fill(bestCandidateMass, eventWeight_);
+        tuple->PostS_SR2_pt300_Fpix->Fill(1 - bestCandidateProbQNoL1, eventWeight_);
+
+        // PU systematics
+        tuple->PostS_SR2_pt300_Fpix_Mass_Pileup_up->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[0]);
+        tuple->PostS_SR2_pt300_Fpix_Mass_Pileup_down->Fill(bestCandidateMass, eventWeight_ * PUSystFactor_[1]);
+
+        // Trigger rescaling
+        tuple->PostS_SR2_pt300_Fpix_Mass_Trigger_up->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorUp);
+        tuple->PostS_SR2_pt300_Fpix_Mass_Trigger_down->Fill(bestCandidateMass, eventWeight_ * triggerSystFactorDown);
+
+        //FPIX recaling 0.5%
+        if ((bestCandidateProbQNoL1 * 1.005) < globalMaxTrackProbQCut_) tuple->PostS_SR2_pt300_Fpix_Mass_ProbQNoL1_up->Fill(bestCandidateMass,eventWeight_);
+        if ((bestCandidateProbQNoL1 * 0.995) < globalMaxTrackProbQCut_) tuple->PostS_SR2_pt300_Fpix_Mass_ProbQNoL1_down->Fill(bestCandidateMass,eventWeight_);
+        //K&C scenario 1
+        tuple->PostS_SR2_pt300_Fpix_Mass_K_up1->Fill(bestCandidateMass_Kup1, eventWeight_);
+        tuple->PostS_SR2_pt300_Fpix_Mass_K_down1->Fill(bestCandidateMass_Kdown1, eventWeight_);
+        tuple->PostS_SR2_pt300_Fpix_Mass_C_up1->Fill(bestCandidateMass_Cup1, eventWeight_);
+        tuple->PostS_SR2_pt300_Fpix_Mass_C_down1->Fill(bestCandidateMass_Cdown1, eventWeight_);
+
+        //K&C scenario 2
+        tuple->PostS_SR2_pt300_Fpix_Mass_K_up2->Fill(bestCandidateMass_Kup2, eventWeight_);
+        tuple->PostS_SR2_pt300_Fpix_Mass_K_down2->Fill(bestCandidateMass_Kdown2, eventWeight_);
+        tuple->PostS_SR2_pt300_Fpix_Mass_C_up2->Fill(bestCandidateMass_Cup2, eventWeight_);
+        tuple->PostS_SR2_pt300_Fpix_Mass_C_down2->Fill(bestCandidateMass_Cdown2, eventWeight_);
+    }
+
+
+    //**** end mass reco + Fpix strategy ****
+
+
     //SR1
     if (bestCandidateIas>Ias_quantiles[5] && bestCandidatePt > pT_cut) {
         // nominal
@@ -6744,6 +7240,7 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
                                 ele_OneOverEminusOneOverP,
                                 muonE,
                                 muonPt,
+                                muonPtErr,
                                 muonEta,
                                 muonPhi,
                                 muonBeta,
@@ -7151,9 +7648,9 @@ void Analyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   desc.addUntracked<std::string>("DeDxTemplate","SUSYBSMAnalysis/HSCP/data/template_2017B.root")
     ->setComment("Norm charge vs path lenght vs module geometry templates for the strips detector, really controlled by the config for each era");
 
-  desc.addUntracked("plotsPreS_massSpectrumApproach",false)->setComment("false: provide plots at PreS step with the ionisation approach preselection; true: provide plots at PreS step with the mass spectrum approach preselection");
+  desc.addUntracked("plotsPreS_massSpectrumApproach",true)->setComment("false: provide plots at PreS step with the ionisation approach preselection; true: provide plots at PreS step with the mass spectrum approach preselection");
 
-  desc.addUntracked<std::string>("TimeOffset","SUSYBSMAnalysis/HSCP/data/MuonTimeOffset.txt")
+  desc.addUntracked<std::string>("TimeOffset","SUSYBSMAnalysis/HSCP/data/MuonTimeOffset_2018Aruns112.txt")
     ->setComment("MuonTimeOffset info"); // I'm not sure we need this
   desc.add<std::string>("PixelCPE","PixelCPETemplateReco")
     ->setComment("CPE used in the pixel reco, PixelCPEClusterRepair is the best available so far, template only is PixelCPETemplateReco");
@@ -7162,7 +7659,7 @@ void Analyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     ->setComment("Boolean for having the TrackToGenAssoc collection, only new sample have it");
   desc.addUntracked("CalcSystematics",false)->setComment("Boolean to decide whether we want to calculate the systematics");
 
-  desc.addUntracked("CalibrateTOF",true)->setComment("Boolean to decide whether we want to apply calibration on TOF");
+  desc.addUntracked("CalibrateTOF",false)->setComment("Boolean to decide whether we want to apply calibration on TOF");
 
   // Trigger choice
   // Choice of HLT_Mu50_v is to simplify analysis
