@@ -4032,6 +4032,7 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
     // PAY ATTENTION : PU == NPV for the following loop !
     if (debug_ == -13 ) LogPrint(MOD) << "Im here";
     if (passPreselection(passedCutsArrayForGiTemplates, false)) {
+      if (debug_ == -14 ) LogPrint(MOD) << "Im here bis";
       if (doPostPreSplots_) {
         //check impact of no clustercleaning (in strip and in pix)
         auto dedxIh_test_tmp =
