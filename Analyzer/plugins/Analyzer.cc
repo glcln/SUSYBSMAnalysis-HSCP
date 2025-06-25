@@ -4030,7 +4030,7 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
     // for |eta|>1 (here |eta|<2.4), use track->pt() to generate the Gstrip template in order to have data at large eta 
     passedCutsArrayForGiTemplates[1] = ( (track->pt() > 20) && (track->pt() < 48) );
     // PAY ATTENTION : PU == NPV for the following loop !
-    if (debug_ == -12 ) LogPrint(MOD) << "I'm here";
+    if (debug_ == -13 ) LogPrint(MOD) << "Im here";
     if (passPreselection(passedCutsArrayForGiTemplates, false)) {
       if (doPostPreSplots_) {
         //check impact of no clustercleaning (in strip and in pix)
@@ -7985,8 +7985,8 @@ void Analyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
 
   // GiStrips templates related parameters
   desc.addUntracked("PileUpTreatment",true)->setComment("Boolean to decide whether we want to have pile up dependent templates or not");
-  desc.addUntracked("CreateGiTemplates",false)->setComment("Boolean to decide whether we create templates or not, true means we generate");
-  desc.addUntracked("CreateAndExitGitemplates",false)->setComment("Set to true if the only purpose is to create templates");
+  desc.addUntracked("CreateGiTemplates",true)->setComment("Boolean to decide whether we create templates or not, true means we generate");
+  desc.addUntracked("CreateAndExitGitemplates",true)->setComment("Set to true if the only purpose is to create templates");
   // TODO: This is not really needed, one could take PuBins_ and have its size-1 to be NbPuBins_
   desc.addUntracked("NbPileUpBins",5)->setComment("Number of pile up bins for GiStrips templates");
   desc.addUntracked("PileUpBins",  std::vector<int>{0,20,25,30,35,200})->setComment("Choice of Pile up bins");
