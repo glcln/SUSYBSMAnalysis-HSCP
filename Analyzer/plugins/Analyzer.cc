@@ -4030,9 +4030,7 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
     // for |eta|>1 (here |eta|<2.4), use track->pt() to generate the Gstrip template in order to have data at large eta 
     passedCutsArrayForGiTemplates[1] = ( (track->pt() > 20) && (track->pt() < 48) );
     // PAY ATTENTION : PU == NPV for the following loop !
-    if (debug_ == -13 ) LogPrint(MOD) << "Im here";
     if (passPreselection(passedCutsArrayForGiTemplates, false)) {
-      if (debug_ == -14 ) LogPrint(MOD) << "Im here bis";
       if (doPostPreSplots_) {
         //check impact of no clustercleaning (in strip and in pix)
         auto dedxIh_test_tmp =
@@ -4140,16 +4138,6 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
               std::vector<int> amplitudesPrim = CrossTalkInv(amplitudes2, 0.10, 0.04, true);
               cleaning = clusterCleaning(amplitudesPrim, 1);
               dedx_inside = isHitInsideTkModule(dedxHits->pos(h), dedxHits->detId(h), cluster);
-
-              if (debug_ == -12 ){
-                LogPrint(MOD) << "Before corr:   size=" << amplitudes2.size() << "    ";
-                for (unsigned int s = 0; s < amplitudes2.size(); s++) LogPrint(MOD) << amplitudes2[s];
-                LogPrint(MOD) << "After corr:   size=" << amplitudes.size() << "    ";
-                for (unsigned int s = 0; s < amplitudes.size(); s++) LogPrint(MOD) << amplitudes[s];
-                LogPrint(MOD) << "After xtalk inv:   size=" << amplitudesPrim.size() << "    ";
-                for (unsigned int s = 0; s < amplitudesPrim.size(); s++) LogPrint(MOD) << amplitudesPrim[s];
-                LogPrint(MOD) << "cleaning: " << cleaning;
-              }
         }
         // TODO
         if (cleaning && dedx_inside)  {
