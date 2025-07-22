@@ -268,6 +268,7 @@ Analyzer::Analyzer(const edm::ParameterSet& iConfig)
   } else {
       dEdxTemplates = loadDeDxTemplate(dEdxTemplate_, splitByModuleType,false,0);
   }
+
   //protection
   if(calibrateTOF_){ 
       tofCalculator.loadTimeOffset(timeOffset_);
@@ -7944,7 +7945,7 @@ void Analyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   desc.addUntracked("DeDxK",2.3)->setComment("K constant, really controlled by the config for each era");
   desc.addUntracked("DeDxC",3.17)->setComment("C constant, really controlled by the config for each era");
   desc.addUntracked("SaveTree",6)->setComment("0: do not save tree, 6: everything is saved");
-  desc.addUntracked<std::string>("DeDxTemplate","SUSYBSMAnalysis/HSCP/data/GiTemplate_EtaExtension.root")
+  desc.addUntracked<std::string>("DeDxTemplate","SUSYBSMAnalysis/HSCP/data/GiTemplate_EtaExtension_SatNewCorr_v2.root")
     ->setComment("Norm charge vs path lenght vs module geometry templates for the strips detector, really controlled by the config for each era");
 
   desc.addUntracked("plotsPreS_massSpectrumApproach",true)->setComment("false: provide plots at PreS step with the ionisation approach preselection; true: provide plots at PreS step with the mass spectrum approach preselection");
