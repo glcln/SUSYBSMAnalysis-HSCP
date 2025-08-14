@@ -105,7 +105,7 @@
 
 // Gael
 // - V49p1: New saturation correction method implemented for the computation of the dE/dx, used for the Gi templates.
-// - V49p2: Add Gi templates with PU dependence (2017+2018 data)
+// - V49p2: Add Gi templates with PU dependence (2017+2018 data). Comparison between the old and new correction method used for ias.
 
 
 #include "SUSYBSMAnalysis/Analyzer/plugins/Analyzer.h"
