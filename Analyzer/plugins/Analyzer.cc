@@ -255,6 +255,11 @@ Analyzer::Analyzer(const edm::ParameterSet& iConfig)
 // define the selection to be considered later for the optimization
 // WARNING: recall that this has a huge impact on the analysis time AND on the output file size --> be carefull with your choice
    
+  topoToken_ = esConsumes();
+  tkGeometryToken_ = esConsumes();
+  pixelCPEToken_   = esConsumes();
+
+
   useClusterCleaning = true;
   if (typeMode_ == 4) {
     useClusterCleaning = false;//switch off cluster cleaning for mCHAMPs
@@ -1210,17 +1215,13 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
   edm::Handle<DTRecSegment4DCollection> DTSegmentCollH;
 
   // Retrieve tracker topology from the event setup
-  edm::ESHandle<TrackerTopology> TopoHandle;
-  iSetup.get<TrackerTopologyRcd>().get(TopoHandle);
-  const TrackerTopology* tTopo = TopoHandle.product();
+  const TrackerTopology* tTopo = &iSetup.getData(topoToken_);
 
   // Retrieve tracker geometry from the event setup
-  edm::ESHandle<TrackerGeometry> tkGeometry;
-  iSetup.get<TrackerDigiGeometryRecord>().get(tkGeometry);
+  const TrackerGeometry* tkGeometry = &iSetup.getData(tkGeometryToken_);
 
   // Retrieve CPE from the event setup
-  edm::ESHandle<PixelClusterParameterEstimator> pixelCPE;
-  iSetup.get<TkPixelCPERecord>().get(pixelCPE_, pixelCPE);
+  const PixelClusterParameterEstimator* pixelCPE = &iSetup.getData(pixelCPEToken_);
 
   // Handles for track collection, PF candidates, PF MET and PF jets, and Calo jets
   const edm::Handle<reco::TrackCollection> trackCollectionHandle = iEvent.getHandle(genTrackToken_);;
@@ -8475,8 +8476,7 @@ float Analyzer::shiftForPt(const float& pt, const float& eta, const float& phi, 
 //=============================================================
 GlobalPoint Analyzer::getOuterHitPos(const edm::EventSetup& iSetup, const reco::DeDxHitInfo* dedxHits) {
 // Retrieve tracker geometry from the event setup
-  edm::ESHandle<TrackerGeometry> tkGeometry;
-  iSetup.get<TrackerDigiGeometryRecord>().get(tkGeometry);
+  const TrackerGeometry* tkGeometry = &iSetup.getData(tkGeometryToken_);
 
   GlobalPoint point(0, 0, 0);
   if (!dedxHits) {

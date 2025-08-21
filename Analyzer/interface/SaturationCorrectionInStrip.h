@@ -6,6 +6,7 @@
 #include <numeric> // pour std::accumulate
 #include <vector>
 #include <iostream>
+#include <sstream>
 using namespace std;
 
 // Layer:

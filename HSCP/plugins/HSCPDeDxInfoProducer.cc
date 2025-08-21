@@ -44,6 +44,8 @@ HSCPDeDxInfoProducer::HSCPDeDxInfoProducer(const edm::ParameterSet& iConfig)
    m_trajTrackAssociationTag   = consumes<TrajTrackAssociationCollection>(iConfig.getParameter<edm::InputTag>("trajectoryTrackAssociation"));
    useTrajectory = iConfig.getUntrackedParameter<bool>("UseTrajectory", true);
 
+   tkGeomToken_ = esConsumes<TrackerGeometry, TrackerDigiGeometryRecord>();
+
    usePixel = iConfig.getParameter<bool>("UsePixel"); 
    useStrip = iConfig.getParameter<bool>("UseStrip");
    meVperADCPixel = iConfig.getParameter<double>("MeVperADCPixel"); 
@@ -68,8 +70,7 @@ HSCPDeDxInfoProducer::~HSCPDeDxInfoProducer(){}
 void  HSCPDeDxInfoProducer::beginRun(edm::Run const& run, const edm::EventSetup& iSetup)
 {
    if(useCalibration && calibGains.size()==0){
-      edm::ESHandle<TrackerGeometry> tkGeom;
-      iSetup.get<TrackerDigiGeometryRecord>().get( tkGeom );
+      const TrackerGeometry& tkGeom = iSetup.getData(tkGeomToken_);
       m_off = tkGeom->offsetDU(GeomDetEnumerators::PixelBarrel); //index start at the first pixel
 
       DeDxTools::makeCalibrationMap(m_calibrationPath, *tkGeom, calibGains, m_off);

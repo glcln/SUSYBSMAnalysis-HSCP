@@ -24,7 +24,6 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -170,6 +169,11 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        edm::EDGetTokenT<std::vector<reco::CaloMET>> CaloMETToken_;
        std::string pixelCPE_;
        double trackProbQCut_;
+
+       edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> tTopoToken_;
+       edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> tkGeometryToken_;
+       edm::ESGetToken<PixelClusterParameterEstimator, TkPixelCPERecord> pixelCPEToken_;
+       edm::ESGetToken<SetupData, SetupRecord> setupToken_;
 
 
 //       edm::EDGetTokenT< edm::ValueMap<reco::DeDxData> > dEdxTrackToken_;
@@ -492,6 +496,10 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
 
    pixelCPE_ = iConfig.getParameter<std::string>("pixelCPE");
    trackProbQCut_ = iConfig.getUntrackedParameter<double>("trackProbQCut");
+   tTopoToken_      = esConsumes<TrackerTopology, TrackerTopologyRcd>();
+   tkGeometryToken_ = esConsumes<TrackerGeometry, TrackerDigiGeometryRecord>();
+   pixelCPEToken_   = esConsumes<PixelClusterParameterEstimator, TkPixelCPERecord>(edm::ESInputTag("", pixelCPE_));
+   setupToken_ = esConsumes<SetupData, SetupRecord>();
 
 
    if (m_doRecomputeMuTim) {
@@ -787,16 +795,11 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     tree_ngoodpv = goodVerts;
 
     // Retrieve tracker topology from geometry
-    edm::ESHandle<TrackerTopology> TopoHandle;
-    iSetup.get<TrackerTopologyRcd>().get(TopoHandle);
-    const TrackerTopology* tTopo = TopoHandle.product();
-
-    edm::ESHandle<TrackerGeometry> tkGeometry;
-    iSetup.get<TrackerDigiGeometryRecord>().get(tkGeometry);
-
+    const TrackerTopology* tTopo = &iSetup.getData(tTopoToken_);
+    const TrackerGeometry* tkGeometry = &iSetup.getData(tkGeometryToken_);
+    
     // Retrieve CPE from the event setup
-    edm::ESHandle<PixelClusterParameterEstimator> pixelCPE;
-    iSetup.get<TkPixelCPERecord>().get(pixelCPE_, pixelCPE);
+    const PixelClusterParameterEstimator* pixelCPE = &iSetup.getData(pixelCPEToken_);
 
     // Triggers
     edm::Handle<edm::TriggerResults> triggerBits;
@@ -2049,8 +2052,7 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 #endif
    
 #ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
-   ESHandle<SetupData> pSetup;
-   iSetup.get<SetupRecord>().get(pSetup);
+   const SetupData& pSetup = iSetup.getData(setupToken_);
 #endif
 }
 

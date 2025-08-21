@@ -21,7 +21,6 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
 
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -29,7 +28,6 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include "DataFormats/Common/interface/Handle.h"
-#include "FWCore/Framework/interface/ESHandle.h"
 #include "DataFormats/RPCDigi/interface/RPCDigi.h"
 #include "DataFormats/RPCDigi/interface/RPCDigiCollection.h"
 #include <DataFormats/RPCRecHit/interface/RPCRecHit.h>
@@ -111,7 +109,6 @@ class SimHitShifterRun2 : public edm::EDProducer {
 public:
   explicit SimHitShifterRun2(const edm::ParameterSet&);
   ~SimHitShifterRun2();
-  //edm::ESHandle <RPCGeometry> rpcGeo;
   virtual void beginRun(const edm::Run&, const edm::EventSetup&) override;
   std::map<unsigned int, float> shiftinfo;
 

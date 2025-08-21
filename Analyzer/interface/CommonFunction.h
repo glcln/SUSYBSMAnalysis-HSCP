@@ -1556,10 +1556,9 @@ reco::DeDxData computedEdx (const float& track_eta,
   std::vector<float> vectPixel;
 
 
-  edm::ESHandle<TrackerGeometry> tkGeometry;
-  iSetup.get<TrackerDigiGeometryRecord>().get(tkGeometry);
-  edm::ESHandle<PixelClusterParameterEstimator> pixelCPE;
-  iSetup.get<TkPixelCPERecord>().get(pixelCPE_, pixelCPE);
+  const TrackerGeometry* tkGeometry = &iSetup.getData(iSetup.get<TrackerDigiGeometryRecord>());
+  const PixelClusterParameterEstimator* pixelCPE = &iSetup.getData(iSetup.get<TkPixelCPERecord>());
+  
 
   // loop in order to have the number of saturated clusters in a track
   unsigned int nsatclust = 0;

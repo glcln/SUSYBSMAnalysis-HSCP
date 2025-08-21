@@ -17,7 +17,6 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
 
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -99,6 +98,8 @@ private:
   std::unique_ptr<MuonServiceProxy> theService;
   MuonSegmentMatcher *theMatcher;
 
+  edm::ESGetToken<DTGeometry, MuonGeometryRecord> dtGeomToken_;
+  edm::ESGetToken<Propagator, TrackingComponentsRecord> propagatorToken_;
 };
 
 #endif

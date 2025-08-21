@@ -22,7 +22,6 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDFilter.h"
 
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -43,6 +42,9 @@
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 
+#include "FWCore/Framework/interface/EventSetup.h"
+#include "FWCore/Framework/interface/ESWatcher.h"
+#include "FWCore/Framework/interface/EventSetupRecord.h"
 
 //
 // class declaration
@@ -61,6 +63,9 @@ class HSCPFilter : public edm::EDFilter {
 #ifdef THIS_IS_AN_EVENT_EXAMPLE
       edm::EDGetTokenT<ExampleData> pInToken;
 #endif
+#ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
+      edm::ESGetToken<SetupData, SetupRecord> pSetupToken_;
+#endif
       edm::EDGetTokenT<reco::VertexCollection> recoVertexToken;
       edm::EDGetTokenT<reco::MuonCollection> input_muon_collectionToken;
       edm::EDGetTokenT<reco::TrackCollection> input_track_collectionToken;
@@ -72,14 +77,6 @@ class HSCPFilter : public edm::EDFilter {
 };
 
 //
-// constants, enums and typedefs
-//
-
-//
-// static data member definitions
-//
-
-//
 // constructors and destructor
 //
 HSCPFilter::HSCPFilter(const edm::ParameterSet& iConfig)
@@ -87,6 +84,9 @@ HSCPFilter::HSCPFilter(const edm::ParameterSet& iConfig)
      filterFlag = iConfig.getParameter< bool >("filter");
 #ifdef THIS_IS_AN_EVENT_EXAMPLE
      pInToken = consumes<ExampleData>(iConfig.getParameter< edm::InputTag >("example"));
+#endif
+#ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
+     pSetupToken_ = esConsumes<SetupData, SetupRecord>();
 #endif
      recoVertexToken = consumes<reco::VertexCollection>(edm::InputTag("offlinePrimaryVertices"));
      input_muon_collectionToken = consumes<reco::MuonCollection>(iConfig.getParameter< edm::InputTag >("inputMuonCollection"));
@@ -107,12 +107,7 @@ HSCPFilter::HSCPFilter(const edm::ParameterSet& iConfig)
 
 HSCPFilter::~HSCPFilter()
 {
-
-   // do anything here that needs to be done at desctruction time
-   // (e.g. close files, deallocate resources etc.)
-
 }
-
 
 //
 // member functions
@@ -129,8 +124,7 @@ HSCPFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
 #endif
 
 #ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
-   ESHandle<SetupData> pSetup;
-   iSetup.get<SetupRecord>().get(pSetup);
+   const SetupData& pSetup = iSetup.getData(pSetupToken_);
 #endif
 
    using namespace reco;
@@ -154,13 +148,7 @@ HSCPFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
          TrackRef SATrack = muon->standAloneMuon();
          if(SATrack->pt()>SAMuPtMin) return true;
       }
-
    }
-
-
-
-
-
 
    using reco::TrackCollection;
    Handle<TrackCollection> tkTracks;
@@ -172,12 +160,8 @@ HSCPFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
    const ValueMap<DeDxData> dEdxTrack = *dEdxTrackHandle.product();
 
    for(size_t i=0; i<tkTracks->size(); i++){
-
       reco::TrackRef trkRef = reco::TrackRef(tkTracks, i);
-
-
       if(trkRef->pt()>trkPtMin && trkRef->eta()<etaMax && trkRef->eta()>etaMin && trkRef->normalizedChi2()<chi2nMax){
-
            double dz  = trkRef->dz (recoVertex[0].position());
            double dxy = trkRef->dxy(recoVertex[0].position());
            double distancemin =sqrt(dxy*dxy+dz*dz);
@@ -191,12 +175,10 @@ HSCPFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
                  closestvertex=i;
               }
            }
-
            dz  = trkRef->dz (recoVertex[closestvertex].position());
            dxy = trkRef->dxy(recoVertex[closestvertex].position());
 
            if(fabs(dz)<dzMax && fabs(dxy)<dxyMax ){
-
              double dedx = dEdxTrack[trkRef].dEdx();
               int dedxnhits  = dEdxTrack[trkRef].numberOfMeasurements();
               if((dedx >dedxMin || dedx<dedxMaxLeft) && dedxnhits > ndedxHits) return true;
@@ -204,7 +186,6 @@ HSCPFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
         }
    }
    return false;
-
 }
 
 // ------------ method called once each job just before starting event loop  ------------

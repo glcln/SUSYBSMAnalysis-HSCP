@@ -16,11 +16,9 @@
 //
 //
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "FWCore/Framework/interface/ESHandle.h"
 
 #include "Geometry/RPCGeometry/interface/RPCGeometry.h"
 #include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
@@ -41,7 +39,7 @@
 // class declaration
 //
 
-class HSCPValidator : public edm::EDAnalyzer {
+class HSCPValidator : public edm::one::EDAnalyzer {
    public:
       explicit HSCPValidator(const edm::ParameterSet&);
       ~HSCPValidator();
@@ -104,7 +102,8 @@ class HSCPValidator : public edm::EDAnalyzer {
       edm::EDGetTokenT<edm::SimTrackContainer> simTrackToken_;
       edm::EDGetTokenT<EBDigiCollection> EBDigiCollectionToken_;
       edm::EDGetTokenT<EEDigiCollection> EEDigiCollectionToken_;
-      edm::ESHandle <RPCGeometry> rpcGeo;
+      edm::ESGetToken<RPCGeometry, MuonGeometryRecord> rpcGeoToken_;
+
       // ECAL
       TH1F* simHitsEcalEnergyHistEB_;
       TH1F* simHitsEcalTimeHistEB_;

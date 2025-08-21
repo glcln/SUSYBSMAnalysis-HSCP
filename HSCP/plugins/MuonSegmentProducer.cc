@@ -20,13 +20,10 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDFilter.h"
-#include "FWCore/Framework/interface/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
-#include "FWCore/Framework/interface/ESHandle.h"
 
 #include "AnalysisDataFormats/SUSYBSMObjects/interface/MuonSegment.h"
 
@@ -57,6 +54,9 @@ private:
 
   edm::EDGetTokenT< CSCSegmentCollection > m_cscSegmentToken;
   edm::EDGetTokenT< DTRecSegment4DCollection > m_dtSegmentToken;
+
+  edm::ESGetToken<DTGeometry, MuonGeometryRecord> dtGeomToken_;
+  edm::ESGetToken<CSCGeometry, MuonGeometryRecord> cscGeomToken_;
 };
 
 using namespace susybsm;
@@ -65,16 +65,16 @@ MuonSegmentProducer::MuonSegmentProducer(const edm::ParameterSet& iConfig) {
   using namespace edm;
   using namespace std;
 
-
   m_cscSegmentToken = consumes< CSCSegmentCollection >( iConfig.getParameter<edm::InputTag>("CSCSegments" ) );
   m_dtSegmentToken  = consumes< DTRecSegment4DCollection >(iConfig.getParameter<edm::InputTag>("DTSegments" ) );
+
+  dtGeomToken_ = esConsumes<DTGeometry, MuonGeometryRecord>();
+  cscGeomToken_ = esConsumes<CSCGeometry, MuonGeometryRecord>();
 
   produces<susybsm::MuonSegmentCollection >();
 }
 
 MuonSegmentProducer::~MuonSegmentProducer() {
-   // do anything here that needs to be done at desctruction time
-   // (e.g. close files, deallocate resources etc.)
 }
 
 //
@@ -92,11 +92,8 @@ MuonSegmentProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) 
   susybsm::MuonSegmentCollection* segments = new susybsm::MuonSegmentCollection;
   std::unique_ptr<susybsm::MuonSegmentCollection> resultSeg(segments);
 
-  edm::ESHandle<DTGeometry> dtGeom;
-  iSetup.get<MuonGeometryRecord>().get(dtGeom);
-
-  edm::ESHandle<CSCGeometry> cscGeom;
-  iSetup.get<MuonGeometryRecord>().get(cscGeom);
+  const DTGeometry* dtGeom = &iSetup.getData(dtGeomToken_);
+  const CSCGeometry* cscGeom = &iSetup.getData(cscGeomToken_);
 
   edm::Handle<DTRecSegment4DCollection> dtSegments;
   iEvent.getByToken(m_dtSegmentToken, dtSegments);
@@ -141,22 +138,3 @@ MuonSegmentProducer::endJob() {
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(MuonSegmentProducer);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

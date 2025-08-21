@@ -113,7 +113,8 @@ HSCPValidator::HSCPValidator(const edm::ParameterSet& iConfig) :
   eeSimHitToken_ (consumes<edm::PCaloHitContainer>(iConfig.getParameter<edm::InputTag>("EESimHitCollection"))),
   simTrackToken_ (consumes<edm::SimTrackContainer>(iConfig.getParameter<edm::InputTag>("SimTrackCollection"))),
   EBDigiCollectionToken_ (consumes<EBDigiCollection>(iConfig.getParameter<edm::InputTag>("EBDigiCollection"))),
-  EEDigiCollectionToken_ (consumes<EEDigiCollection>(iConfig.getParameter<edm::InputTag>("EEDigiCollection")))
+  EEDigiCollectionToken_ (consumes<EEDigiCollection>(iConfig.getParameter<edm::InputTag>("EEDigiCollection"))),
+  rpcGeoToken_ (esConsumes<RPCGeometry, MuonGeometryRecord>())
 {
   //now do what ever initialization is needed
   // GEN
@@ -224,7 +225,8 @@ void
 HSCPValidator::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
   using namespace edm;
-  iSetup.get<MuonGeometryRecord>().get(rpcGeo);
+  const RPCGeometry& rpcGeo = iSetup.getData(rpcGeoToken_);
+
 
 
   if(doGenPlots_)

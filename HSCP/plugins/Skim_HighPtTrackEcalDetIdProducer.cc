@@ -22,14 +22,12 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
 
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "DataFormats/Common/interface/Handle.h"
-#include "FWCore/Framework/interface/ESHandle.h"
 
 #include "DataFormats/TrackReco/interface/Track.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
@@ -63,21 +61,12 @@ class HighPtTrackEcalDetIdProducer : public edm::EDProducer {
    private:
 
       edm::EDGetTokenT<reco::TrackCollection> inputCollectionToken_;
+      edm::ESGetToken<CaloTopology, CaloTopologyRecord> caloTopologyToken_;
       const CaloTopology* caloTopology_;
       TrackDetectorAssociator trackAssociator_;
       TrackAssociatorParameters parameters_;
       double  ptcut_;
-      // ----------member data ---------------------------
 };
-
-//
-// constants, enums and typedefs
-//
-
-
-//
-// static data member definitions
-//
 
 //
 // constructors and destructor
@@ -87,24 +76,19 @@ HighPtTrackEcalDetIdProducer::HighPtTrackEcalDetIdProducer(const edm::ParameterS
    inputCollectionToken_ = consumes<reco::TrackCollection>(iConfig.getParameter< edm::InputTag >("inputCollection"));
    ptcut_= iConfig.getParameter< double >("TrackPt");
 
-    produces< DetIdCollection >() ;
-   // TrackAssociator parameters
+   produces< DetIdCollection >() ;
    edm::ParameterSet parameters = iConfig.getParameter<edm::ParameterSet>("TrackAssociatorParameters");
    edm::ConsumesCollector iC = consumesCollector();
    parameters_.loadParameters( parameters, iC );
    trackAssociator_.useDefaultPropagator();
 
+   caloTopologyToken_ = esConsumes<CaloTopology, CaloTopologyRecord>();
 }
 
 
 HighPtTrackEcalDetIdProducer::~HighPtTrackEcalDetIdProducer()
 {
-
-   // do anything here that needs to be done at desctruction time
-   // (e.g. close files, deallocate resources etc.)
-
 }
-
 
 //
 // member functions
@@ -113,23 +97,19 @@ HighPtTrackEcalDetIdProducer::~HighPtTrackEcalDetIdProducer()
 void
 HighPtTrackEcalDetIdProducer::beginRun(const edm::Run & run, const edm::EventSetup & iSetup)
 {
-   edm::ESHandle<CaloTopology> theCaloTopology;
-   iSetup.get<CaloTopologyRecord>().get(theCaloTopology);
-   caloTopology_ = &(*theCaloTopology);
+   caloTopology_ = &iSetup.getData(caloTopologyToken_);
 }
 
-// ------------ method called to produce the data  ------------
 void
 HighPtTrackEcalDetIdProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
    using namespace edm;
    using reco::TrackCollection;
-//   if(!iSetup) continue;
+
    Handle<TrackCollection> tkTracks;
    iEvent.getByToken(inputCollectionToken_,tkTracks);
    std::unique_ptr< DetIdCollection > interestingDetIdCollection( new DetIdCollection() ) ;
 
-   
    for(TrackCollection::const_iterator itTrack = tkTracks->begin();
        itTrack != tkTracks->end();
        ++itTrack) {
@@ -153,5 +133,5 @@ HighPtTrackEcalDetIdProducer::produce(edm::Event& iEvent, const edm::EventSetup&
    iEvent.put(std::move(interestingDetIdCollection));
 
 }
-//define this as a plug-in
+
 DEFINE_FWK_MODULE(HighPtTrackEcalDetIdProducer);

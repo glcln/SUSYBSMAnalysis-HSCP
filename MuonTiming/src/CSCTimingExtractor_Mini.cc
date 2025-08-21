@@ -19,7 +19,6 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
 
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -80,6 +79,7 @@ CSCTimingExtractor_Mini::CSCTimingExtractor_Mini(const edm::ParameterSet& iConfi
   edm::ParameterSet serviceParameters = iConfig.getParameter<edm::ParameterSet>("ServiceParameters");
   theService = std::make_unique<MuonServiceProxy>(serviceParameters);
   theMatcher = segMatcher;
+  propagatorToken_ = esConsumes<Propagator, TrackingComponentsRecord>(edm::ESInputTag{"", "SteppingHelixPropagatorAny"});
 }
 
 
@@ -101,10 +101,8 @@ void CSCTimingExtractor_Mini::fillTiming(TimeMeasurementSequence &tmSequence,
 
   const GlobalTrackingGeometry *theTrackingGeometry = &*theService->trackingGeometry();
 
-  // get the propagator  
-  edm::ESHandle<Propagator> propagator;
-  iSetup.get<TrackingComponentsRecord>().get("SteppingHelixPropagatorAny", propagator);
-  const Propagator *propag = propagator.product();
+  // get the propagator
+  const Propagator* propag = &iSetup.getData(propagatorToken_);
 
   math::XYZPoint  pos = math::XYZPoint(muonTrack->vx(), muonTrack->vy(), muonTrack->vz());
   math::XYZVector mom = math::XYZVector(muonTrack->px(), muonTrack->py(), muonTrack->pz());

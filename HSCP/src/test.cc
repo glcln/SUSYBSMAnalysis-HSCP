@@ -1,20 +1,22 @@
 #include "SUSYBSMAnalysis/HSCP/interface/BetaCalculatorRPC.h"
-
 using namespace susybsm;
 
 BetaCalculatorRPC::BetaCalculatorRPC(const edm::ParameterSet& iConfig, edm::ConsumesCollector&& iC) {
   rpcRecHitsToken = iC.consumes<RPCRecHitCollection>( iConfig.getParameter<edm::InputTag>("rpcRecHits") );
-  // ESGetToken is required in Run3 releases
+  // Nouveau en Run3 : ESGetToken via esConsumes
   rpcGeomToken_   = iC.esConsumes<RPCGeometry, MuonGeometryRecord>();
 }
 
 void BetaCalculatorRPC::addInfoToCandidate(HSCParticle& candidate,
                                            const edm::Event& iEvent,
                                            const edm::EventSetup& iSetup) {
-  // Retrieve RPC geometry
+  // AVANT (obsolete):
+  // edm::ESHandle<RPCGeometry> rpcGeo;
+  // iSetup.get<MuonGeometryRecord>().get(rpcGeo);
+
+  // MAINTENANT :
   auto const& rpcGeo = iSetup.getData(rpcGeomToken_);
 
-  // Retrieve RPC rechits
   edm::Handle<RPCRecHitCollection> rpcHits;
   iEvent.getByToken(rpcRecHitsToken, rpcHits);
 
@@ -24,8 +26,7 @@ void BetaCalculatorRPC::addInfoToCandidate(HSCParticle& candidate,
   trackingRecHit_iterator start, stop;
   reco::Track track;
 
-  // NOTE: This still relies on tracking rechits in AOD.
-  // In miniAOD these are not stored anymore.
+  // FIXME AOD: recHits tracking ne sont plus là en miniAOD; ok pour l’instant si tu tournes AOD.
   if (candidate.hasMuonRef() && candidate.muonRef()->combinedMuon().isNonnull()) {
     start = candidate.muonRef()->combinedMuon()->recHitsBegin();
     stop  = candidate.muonRef()->combinedMuon()->recHitsEnd();
@@ -40,11 +41,11 @@ void BetaCalculatorRPC::addInfoToCandidate(HSCParticle& candidate,
   for (trackingRecHit_iterator recHit = start; recHit != stop; ++recHit) {
     if ((*recHit)->geographicalId().det() != DetId::Muon) continue;
     if ((*recHit)->geographicalId().subdetId() != MuonSubdetId::RPC) continue;
-    if (!(*recHit)->isValid()) continue; // valid check
+    if (!(*recHit)->isValid()) continue;
 
     RPCDetId rollId = (RPCDetId)(*recHit)->geographicalId();
 
-    typedef std::pair<RPCRecHitCollection::const_iterator, RPCRecHitCollection::const_iterator> rangeRecHits;
+    using rangeRecHits = std::pair<RPCRecHitCollection::const_iterator, RPCRecHitCollection::const_iterator>;
     rangeRecHits recHitCollection = rpcHits->get(rollId);
 
     int size = 0, clusterS = 0;
@@ -52,21 +53,22 @@ void BetaCalculatorRPC::addInfoToCandidate(HSCParticle& candidate,
       clusterS = recHitC->clusterSize();
       size++;
     }
-    if (size > 1) continue;     // reject if more than one rechit in this roll
-    if (clusterS > 4) continue; // reject if cluster size >= 5
+    if (size > 1) continue;     // un seul rechit dans ce roll ?
+    if (clusterS > 4) continue; // cluster size ≤ 4
 
     LocalPoint recHitPos = (*recHit)->localPosition();
+    // NOTE: rpcGeo est une référence, plus besoin de flèche ->
     const RPCRoll* rollasociated = rpcGeo.roll(rollId);
-    const BoundPlane& RPCSurface = rollasociated->surface();
+    const BoundPlane& RPCSurface  = rollasociated->surface();
 
     RPCHit4D ThisHit;
-    ThisHit.bx = static_cast<const RPCRecHit&>(**recHit).BunchX();
+    ThisHit.bx = static_cast<const RPCRecHit&>(**recHit).BunchX(); // identique à ton cast
     ThisHit.gp = RPCSurface.toGlobal(recHitPos);
     ThisHit.id = (RPCDetId)(*recHit)->geographicalId().rawId();
     hits.push_back(ThisHit);
   }
 
-  // Basic candidate selection: at least one out-of-time hit, BX increasing with radius
+  // Suite inchangée…
   std::sort(hits.begin(), hits.end());
   int lastbx = -7;
   bool increasing = true, outOfTime = false;
@@ -77,7 +79,6 @@ void BetaCalculatorRPC::addInfoToCandidate(HSCParticle& candidate,
   }
   result.isCandidate = (outOfTime && increasing);
 
-  // Run beta estimation algorithm
   algo(hits);
   result.beta = beta();
   candidate.setRpc(result);

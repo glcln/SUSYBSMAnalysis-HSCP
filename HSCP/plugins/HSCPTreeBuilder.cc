@@ -20,10 +20,8 @@
 #include <cmath>
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDFilter.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-#include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/Utilities/interface/Exception.h"
@@ -42,7 +40,7 @@
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
 #include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
 #include "Geometry/TrackerGeometryBuilder/interface/StripGeomDetUnit.h"
-#include "Geometry/TrackerGeometryBuilder/interface/PixelGeomDetUnit.h"
+#include "Geometry/CommonTopologies/interface/PixelGeomDetUnit.h"
 #include "Geometry/TrackerNumberingBuilder/interface/GeometricDet.h"
 #include "Geometry/CommonDetUnit/interface/TrackingGeometry.h"
 
@@ -55,7 +53,7 @@
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "DataFormats/TrackerRecHit2D/interface/SiStripRecHit2D.h"
 #include "DataFormats/TrackerRecHit2D/interface/SiStripMatchedRecHit2D.h"
-#include "DataFormats/SiStripDetId/interface/SiStripSubStructure.h"
+#include "DataFormats/TrackerCommon/interface/SiStripSubStructure.h"
 #include "DataFormats/DetId/interface/DetId.h"
 #include "DataFormats/SiStripDetId/interface/StripSubdetector.h"
 
@@ -130,6 +128,8 @@ class HSCPTreeBuilder : public edm::EDFilter {
 		const edm::Event*      iEvent_;
 
 		edm::Service<TFileService> tfs;
+
+                edm::ESGetToken<MagneticField, IdealMagneticFieldRecord> magneticFieldToken_;
 
                 EDGetTokenT<L1GlobalTriggerReadoutRecord> m_gtReadoutRecordToken;
                 EDGetTokenT<edm::TriggerResults> m_trToken;
@@ -268,7 +268,9 @@ HSCPTreeBuilder::HSCPTreeBuilder(const edm::ParameterSet& iConfig)
    m_trToken = consumes<edm::TriggerResults>(InputTag("TriggerResults"));
    m_recoVertexToken = consumes<reco::VertexCollection>(InputTag("offlinePrimaryVertices"));
    m_genParticlesToken = mayConsume<GenParticleCollection>(InputTag("genParticles"));
-   m_HSCPsToken          = consumes<susybsm::HSCParticleCollection >(iConfig.getParameter<InputTag>              ("HSCParticles"));
+   m_HSCPsToken          = consumes<susybsm::HSCParticleCollection >(iConfig.getParameter<InputTag>("HSCParticles"));
+   magneticFieldToken_ = esConsumes<MagneticField, IdealMagneticFieldRecord>();
+
 
    reccordVertexInfo   = iConfig.getUntrackedParameter<bool>    ("reccordVertexInfo"  ,  true );
    reccordGenInfo      = iConfig.getUntrackedParameter<bool>    ("reccordGenInfo"     ,  false );
@@ -442,10 +444,8 @@ HSCPTreeBuilder::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
    Event_Time            = iEvent.eventAuxiliary().time().value();
 
    // BField part:
-   ESHandle<MagneticField> MF;
-   iSetup.get<IdealMagneticFieldRecord>().get(MF);
-   const MagneticField* theMagneticField = MF.product();
-   Event_BField = fabs(theMagneticField->inTesla(GlobalPoint(0,0,0)).z());
+   const MagneticField& MF = iSetup.getData(magneticFieldToken_);
+   Event_BField = fabs(MF.inTesla(GlobalPoint(0,0,0)).z());
 
    // L1 TRIGGER part:
    edm::Handle<L1GlobalTriggerReadoutRecord> h_gtReadoutRecord;
@@ -632,13 +632,4 @@ HSCPTreeBuilder::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(HSCPTreeBuilder);
-
-
-
-
-
-
-
-
-
 

@@ -31,7 +31,7 @@
 <use   name="Geometry/CSCGeometry"/>
 <use   name="Geometry/GEMGeometry"/>
 <use   name="Geometry/Records"/>
-<use   name="SimTracker/Records"/>
+<use   name="SimGeneral/TrackingAnalysis"/>
 <use   name="SimMuon/MCTruth"/>
 <use   name="SimTracker/TrackAssociation"/>
 <use   name="roothistmatrix"/>

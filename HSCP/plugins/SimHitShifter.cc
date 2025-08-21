@@ -22,7 +22,6 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
 
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -30,7 +29,6 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include "DataFormats/Common/interface/Handle.h"
-#include "FWCore/Framework/interface/ESHandle.h"
 #include "DataFormats/RPCDigi/interface/RPCDigi.h"
 #include "DataFormats/RPCDigi/interface/RPCDigiCollection.h"
 #include <DataFormats/RPCRecHit/interface/RPCRecHit.h>
@@ -109,17 +107,15 @@ class SimHitShifter : public edm::EDProducer {
    public:
       explicit SimHitShifter(const edm::ParameterSet&);
       ~SimHitShifter();
-  //edm::ESHandle <RPCGeometry> rpcGeo;
-      virtual void beginRun(const edm::Run&, const edm::EventSetup&) override;
+      void beginRun(const edm::Run&, const edm::EventSetup&) override;
       std::map<int,float> shiftinfo;
-
 
    private:
       std::string ShiftFileName;
-      virtual void beginJob(const edm::Run&, const edm::EventSetup&) ;
-      virtual void produce(edm::Event&, const edm::EventSetup&) override;
-      virtual void endJob() override ;
-    
+      void beginJob(const edm::Run&, const edm::EventSetup&) ;
+      void produce(edm::Event&, const edm::EventSetup&) override;
+      void endJob() override ;
+      edm::ESGetToken<RPCGeometry, MuonGeometryRecord> rpcGeoToken_;
 };
 
 SimHitShifter::SimHitShifter(const edm::ParameterSet& iConfig)
@@ -127,9 +123,8 @@ SimHitShifter::SimHitShifter(const edm::ParameterSet& iConfig)
   std::cout<<"in the constructor"<<std::endl;
   
   ShiftFileName  = iConfig.getUntrackedParameter<std::string>("ShiftFileName","/afs/cern.ch/user/c/carrillo/simhits/CMSSW_3_5_8_patch2/src/simhitshifter/SimHitShifter/Merged_Muon_RawId_Shift.txt");
+  rpcGeoToken_ = esConsumes<RPCGeometry, MuonGeometryRecord>();
  
-  //iSetup.get<MuonGeometryRecord>().get(rpcGeo);
-
   std::ifstream ifin(ShiftFileName.c_str());
 
   int rawId;
@@ -159,10 +154,10 @@ SimHitShifter::~SimHitShifter()
 void SimHitShifter::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
    using namespace edm;
 
-   //std::cout << " Getting the SimHits " <<std::endl;
+   const RPCGeometry* rpcGeo = &iSetup.getData(rpcGeoToken_);
+
    std::vector<edm::Handle<edm::PSimHitContainer> > theSimHitContainers;
    iEvent.getManyByType(theSimHitContainers);
-   //std::cout << " The Number of sim Hits is  " << theSimHitContainers.size() <<std::endl;
 
    std::unique_ptr<edm::PSimHitContainer> pcsc(new edm::PSimHitContainer);
    std::unique_ptr<edm::PSimHitContainer> pdt(new edm::PSimHitContainer);
@@ -185,8 +180,7 @@ void SimHitShifter::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
 
      float newtof = 0;
     
-     if(simdetid.det()==DetId::Muon &&  simdetid.subdetId()== MuonSubdetId::RPC){//Only RPCs
-       //std::cout<<"\t\t We have an RPC Sim Hit! in t="<<(*iHit).timeOfFlight()<<" DetId="<<(*iHit).detUnitId()<<std::endl;
+     if(simdetid.det()==DetId::Muon &&  simdetid.subdetId()== MuonSubdetId::RPC){
        if(shiftinfo.find(simdetid.rawId())==shiftinfo.end()){
 	 std::cout<<"RPC Warning the RawId = "<<simdetid.det()<<" | "<<simdetid.rawId()<<"is not in the map"<<std::endl;
 	 newtof = (*iHit).timeOfFlight();
@@ -199,7 +193,7 @@ void SimHitShifter::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
 		   (*iHit).energyLoss(),(*iHit).particleType(),simdetid,(*iHit). trackId(),(*iHit).thetaAtEntry(),(*iHit).phiAtEntry(),(*iHit).processType());
        prpc->push_back(hit);
      }
-     else if(simdetid.det()==DetId::Muon &&  simdetid.subdetId()== MuonSubdetId::DT){//Only DTs
+     else if(simdetid.det()==DetId::Muon &&  simdetid.subdetId()== MuonSubdetId::DT){
        int RawId = simdetid.rawId(); 
        std::cout<<"We found a DT simhit the RawId in Dec is";
        std::cout<<dec<<RawId<<std::endl;
@@ -215,7 +209,6 @@ void SimHitShifter::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
        std::cout<<dec<<extendedRawId<<std::endl;
        
        if(shiftinfo.find(extendedRawId)==shiftinfo.end()){
-	 //std::cout<<"DT Warning the RawId = "<<extendedRawId<<"is not in the map"<<std::endl;
 	 newtof = (*iHit).timeOfFlight();
        }else{
 	 newtof = (*iHit).timeOfFlight()+shiftinfo[extendedRawId];
@@ -228,8 +221,7 @@ void SimHitShifter::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
 		   (*iHit).energyLoss(),(*iHit).particleType(),simdetid,(*iHit). trackId(),(*iHit).thetaAtEntry(),(*iHit).phiAtEntry(),(*iHit).processType());
        pdt->push_back(hit);
      }
-     else if(simdetid.det()==DetId::Muon &&  simdetid.subdetId()== MuonSubdetId::CSC){//Only CSCs
-       //std::cout<<"\t\t We have an CSC Sim Hit! in t="<<(*iHit).timeOfFlight()<<" DetId="<<(*iHit).detUnitId()<<std::endl;
+     else if(simdetid.det()==DetId::Muon &&  simdetid.subdetId()== MuonSubdetId::CSC){
        
        CSCDetId TheCSCDetId = CSCDetId(simdetid);
        CSCDetId TheChamberDetId = TheCSCDetId.chamberId();
@@ -237,8 +229,7 @@ void SimHitShifter::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
        if(shiftinfo.find(TheChamberDetId.rawId())==shiftinfo.end()){
 	 std::cout<<"The RawId is not in the map,perhaps it is on the CSCs station 1 ring 4"<<std::endl;
 	 if(TheChamberDetId.station()==1 && TheChamberDetId.ring()==4){
-	   CSCDetId TheChamberDetIdNoring4= CSCDetId(TheChamberDetId.endcap(),TheChamberDetId.station(),1 //1 instead of 4
-						     ,TheChamberDetId.chamber(),TheChamberDetId.layer());
+	   CSCDetId TheChamberDetIdNoring4= CSCDetId(TheChamberDetId.endcap(),TheChamberDetId.station(),1,TheChamberDetId.chamber(),TheChamberDetId.layer());
 	   
 	   if(shiftinfo.find(TheChamberDetIdNoring4.rawId())==shiftinfo.end()){
 	     std::cout<<"CSC Warning the RawId = "<<TheChamberDetIdNoring4<<" "<<TheChamberDetIdNoring4.rawId()<<"is not in the map"<<std::endl;
@@ -275,17 +266,14 @@ SimHitShifter::beginRun(const edm::Run& run, const edm::EventSetup& iSetup)
 
 }
 
-// ------------ method called once each job just before starting event loop  ------------
 void 
 SimHitShifter::beginJob(const edm::Run& run, const edm::EventSetup& iSetup)
 {
 
 }
 
-// ------------ method called once each job just after ending the event loop  ------------
 void 
 SimHitShifter::endJob() {
 }
 
-//define this as a plug-in
 DEFINE_FWK_MODULE(SimHitShifter);

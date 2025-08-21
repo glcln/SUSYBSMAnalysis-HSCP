@@ -38,10 +38,7 @@
 //#include "TCanvas.h"
 
 // ~~~~~~~~~ CMSSW include files ~~~~~~~~~
-//#include "FWCore/Framework/interface/one/EDAnalyzer.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
 
-#include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 #include "DataFormats/Common/interface/View.h"
@@ -109,7 +106,8 @@
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
 #include "CondFormats/L1TObjects/interface/L1GtTriggerMenu.h"
 #include "DataFormats/L1GlobalTrigger/interface/L1GlobalTriggerReadoutRecord.h"
-#include "L1Trigger/L1TGlobal/interface/L1TGlobalUtil.h"
+#include "DataFormats/L1TGlobal/interface/GlobalAlgBlk.h"
+#include "DataFormats/L1TGlobal/interface/GlobalExtBlk.h"
 //#include "DataFormats/L1TGlobalTrigger/interface/GlobalAlgBlk.h"
 //#include "DataFormats/L1TGlobalTrigger/interface/L1TGlobalOutput.h"
 
@@ -125,7 +123,7 @@
 #include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
-#include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
+#include "CommonTools/Egamma/interface/ConversionTools.h"
 
 #include "DataFormats/ParticleFlowReco/interface/PFDisplacedVertex.h"
 
@@ -145,7 +143,7 @@ using namespace std;
 class TupleMaker;
 class MCWeight;
 
-class Analyzer : public edm::EDAnalyzer {
+class Analyzer : public edm::one::EDAnalyzer {
 public:
   explicit Analyzer(const edm::ParameterSet&);
   ~Analyzer();
@@ -243,6 +241,10 @@ private:
   edm::EDGetTokenT<pat::PackedTriggerPrescales> triggerPrescalesToken_;
   edm::EDGetTokenT<trigger::TriggerEvent> trigEventToken_ ;
   edm::EDGetTokenT<l1t::EtSumBxCollection> l1TriggerEtSumToken_;
+
+  edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> tkGeometryToken_;
+  edm::ESGetToken<PixelClusterParameterEstimator, TkPixelCPERecord> pixelCPEToken_;
+  edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> topoToken_;
 
   edm::EDGetTokenT<bool> primaryVertexFilterToken_;
   edm::EDGetTokenT<bool> globalSuperTightHalo2016FilterToken_;
