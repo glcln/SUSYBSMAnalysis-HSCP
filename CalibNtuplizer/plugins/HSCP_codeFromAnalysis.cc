@@ -107,24 +107,26 @@ const double TkModGeomWidthT   [] = {1, 3.072000, 3.072000, 4.684800,  4.684800,
 bool isHitInsideTkModule(const LocalPoint hitPos, const DetId& detid, const SiStripCluster* cluster=NULL){
    if(detid.subdetId()<3){return true;} //do nothing for pixel modules
    SiStripDetId SSdetId(detid);
-   int moduleGeometry = SSdetId.moduleGeometry();
+   SiStripModuleGeometry moduleGeom = SSdetId.moduleGeometry();
+   int moduleIndex = static_cast<int>(moduleGeom);
+
 
    //clean along the apv lines
    if(cluster && (cluster->firstStrip()%128 == 0 || (cluster->firstStrip() + cluster->amplitudes().size()%128==127))) return false;
 
    double nx, ny;
-   if(moduleGeometry<=4){
-      ny = hitPos.y() /  TkModGeomLength[moduleGeometry];
-      nx = hitPos.x() /  TkModGeomWidthT[moduleGeometry];
+   if(moduleIndex<=4){
+      ny = hitPos.y() /  TkModGeomLength[moduleIndex];
+      nx = hitPos.x() /  TkModGeomWidthT[moduleIndex];
    }else{
-      double  offset = TkModGeomLength[moduleGeometry] * (TkModGeomWidthT[moduleGeometry]+TkModGeomWidthB[moduleGeometry]) / (TkModGeomWidthT[moduleGeometry]-TkModGeomWidthB[moduleGeometry]);  // check sign if GeomWidthT[moduleGeometry] < TkModGeomWidthB[moduleGeometry] !!! 
-      double  tan_a = TkModGeomWidthT[moduleGeometry] / std::abs(offset + TkModGeomLength[moduleGeometry]);
-      ny = hitPos.y() /  TkModGeomLength[moduleGeometry];
+      double  offset = TkModGeomLength[moduleIndex] * (TkModGeomWidthT[moduleIndex]+TkModGeomWidthB[moduleIndex]) / (TkModGeomWidthT[moduleIndex]-TkModGeomWidthB[moduleIndex]);  // check sign if GeomWidthT[moduleIndex] < TkModGeomWidthB[moduleIndex] !!! 
+      double  tan_a = TkModGeomWidthT[moduleIndex] / std::abs(offset + TkModGeomLength[moduleIndex]);
+      ny = hitPos.y() /  TkModGeomLength[moduleIndex];
       nx = hitPos.x() / (tan_a*std::abs(hitPos.y()+offset));
    }
 
    // "blacklists" for the gaps and edges
-   switch (moduleGeometry){
+   switch (moduleIndex){
       case  0: return true;
       case  1: if (fabs(ny) > 0.96 || fabs(nx) > 0.98) return false; break;
       case  2: if (fabs(ny) > 0.97 || fabs(nx) > 0.99) return false; break;
@@ -166,7 +168,7 @@ reco::DeDxData computedEdx(const reco::DeDxHitInfo* dedxHits, double* scaleFacto
 //        if(useClusterCleaning && !clusterCleaning(dedxHits->stripCluster(h), crossTalkInvAlgo))continue;
         bool bool_cleaning=true;
         if (useStrip && detid.subdetId()>=3) {
-         std::vector <int> amps = convert(dedxHits->stripCluster(h)->amplitudes());
+         std::vector<int> amps = convert(dedxHits->stripCluster(h)->amplitudes());
          if (crossTalkInvAlgo==1) {
            amps = CrossTalkInv(amps, 0.10, 0.04, true);
          }
@@ -227,10 +229,14 @@ reco::DeDxData computedEdx(const reco::DeDxHitInfo* dedxHits, double* scaleFacto
 //           if(fakeHIP && detid.subdetId()>=3 && rand()%1000<35)ChargeOverPathlength = ( 0.5 + ((rand()%15000)/10000.0) ) / (3.61e-06*265*10);
 //           if(fakeHIP && detid.subdetId() <3 && rand()%1000<20)ChargeOverPathlength = ( 0.3 + ((rand()%12000)/10000.0) ) / (3.61e-06*265*10*265);
 
-           int moduleGeometry = 0; // underflow for debug
-           if (detid.subdetId()<3) moduleGeometry = 15; // 15 == pixel
-           else {SiStripDetId SSdetId(detid); moduleGeometry = SSdetId.moduleGeometry();}
-           int    BinX   = templateHisto->GetXaxis()->FindBin(moduleGeometry);
+           int moduleIndex = 0; // underflow for debug
+           if (detid.subdetId()<3) moduleIndex = 15; // 15 == pixel
+           else {
+            SiStripDetId SSdetId(detid);
+            SiStripModuleGeometry moduleGeom = SSdetId.moduleGeometry();
+            moduleIndex = static_cast<int>(moduleGeom);
+           }
+           int    BinX   = templateHisto->GetXaxis()->FindBin(moduleIndex);
            int    BinY   = templateHisto->GetYaxis()->FindBin(dedxHits->pathlength(h)*10.0); //*10 because of cm-->mm
            int    BinZ   = templateHisto->GetZaxis()->FindBin(ChargeOverPathlength);
            double Prob   = templateHisto->GetBinContent(BinX,BinY,BinZ);
@@ -314,17 +320,6 @@ reco::DeDxData computedEdx(const reco::DeDxHitInfo* dedxHits, double* scaleFacto
 }
 
 
-
-std::vector<int> convert(const std::vector<unsigned char>& input)
-{
-  std::vector<int> output;
-  for(unsigned int i=0;i<input.size();i++){
-        output.push_back((int)input[i]);
-  }
-  return output;
-}
-
-
 std::vector<int> CrossTalkInv(const std::vector<int>&  Q, const float x1, const float x2, bool way,float threshold,float thresholdSat) {
   const unsigned N=Q.size();
   std::vector<int> QII;
@@ -390,13 +385,13 @@ bool clusterCleaning(std::vector<int> ampls,  int crosstalkInv, uint8_t * exitCo
          Int_t NofMax=0; Int_t recur255=1; Int_t recur254=1;
          bool MaxOnStart=false;bool MaxInMiddle=false, MaxOnEnd =false;
          Int_t MaxPos=0;
-        // Début avec max
+        // Dï¿½but avec max
          if(ampls.size()!=1 && ((ampls[0]>ampls[1])
             || (ampls.size()>2 && ampls[0]==ampls[1] && ampls[1]>ampls[2] && ampls[0]!=254 && ampls[0]!=255) 
             || (ampls.size()==2 && ampls[0]==ampls[1] && ampls[0]!=254 && ampls[0]!=255)) ){
           NofMax=NofMax+1;  MaxOnStart=true;  }
 
-        // Maximum entouré
+        // Maximum entourï¿½
          if(ampls.size()>2){
           for (unsigned int i =1; i < ampls.size()-1; i++) {
                 if( (ampls[i]>ampls[i-1] && ampls[i]>ampls[i+1]) 
@@ -422,7 +417,7 @@ bool clusterCleaning(std::vector<int> ampls,  int crosstalkInv, uint8_t * exitCo
              ||  ampls[ampls.size()-1]==255){
            NofMax=NofMax+1;  MaxOnEnd=true;   }
          }
-        // Si une seule strip touchée
+        // Si une seule strip touchï¿½e
         if(ampls.size()==1){    NofMax=1;}
 
 

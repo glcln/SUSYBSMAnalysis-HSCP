@@ -143,7 +143,7 @@ using namespace std;
 class TupleMaker;
 class MCWeight;
 
-class Analyzer : public edm::one::EDAnalyzer {
+class Analyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
 public:
   explicit Analyzer(const edm::ParameterSet&);
   ~Analyzer();

@@ -34,6 +34,7 @@
 #include "DataFormats/GeometrySurface/interface/TrapezoidalPlaneBounds.h"
 #include "DataFormats/GeometrySurface/interface/RectangularPlaneBounds.h"
 #include "DataFormats/DetId/interface/DetId.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 
 #include "TTree.h"
 #include "TVector3.h"
@@ -45,13 +46,14 @@ using namespace std;
 // class declaration
 //
 
-class GeomDumpForFWLite : public edm::one::EDAnalyzer<> {
+class GeomDumpForFWLite : public edm::one::EDAnalyzer<edm::one::SharedResources, edm::one::WatchRuns> {
 public:
   explicit GeomDumpForFWLite(const edm::ParameterSet&);
   ~GeomDumpForFWLite() override;
+  void endRun(const edm::Run&, const edm::EventSetup&) override;
 
 private:
-  void beginRun(edm::Run& run, const edm::EventSetup&) override;
+  void beginRun(const edm::Run& run, const edm::EventSetup&) override;
   void analyze(const edm::Event&, const edm::EventSetup&) override;
   void endJob() override;
 
@@ -77,7 +79,9 @@ GeomDumpForFWLite::GeomDumpForFWLite(const edm::ParameterSet& iConfig)
 
 GeomDumpForFWLite::~GeomDumpForFWLite() {}
 
-void GeomDumpForFWLite::beginRun(edm::Run& run, const edm::EventSetup& iSetup) {}
+void GeomDumpForFWLite::endRun(const edm::Run&, const edm::EventSetup&) {}
+
+void GeomDumpForFWLite::beginRun(const edm::Run& run, const edm::EventSetup& iSetup) {}
 
 void GeomDumpForFWLite::endJob() {}
 

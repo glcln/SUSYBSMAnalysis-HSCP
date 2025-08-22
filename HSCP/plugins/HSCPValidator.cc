@@ -101,7 +101,7 @@ HSCPValidator::HSCPValidator(const edm::ParameterSet& iConfig) :
   doSimTrackPlots_ (iConfig.getParameter<bool>("MakeSimTrackPlots")),
   doSimDigiPlots_ (iConfig.getParameter<bool>("MakeSimDigiPlots")),
   doRecoPlots_ (iConfig.getParameter<bool>("MakeRecoPlots")),
-  token_(consumes<edm::HepMCProduct> (iConfig.getParameter<edm::InputTag>("generatorLabel"))),
+  genParticlesToken_(consumes<edm::View<reco::GenParticle>>(iConfig.getParameter<edm::InputTag>("generatorLabel"))),
   simTracksToken_(consumes<edm::SimTrackContainer>(edm::InputTag("g4SimHits"))),
   trEvToken_(consumes<trigger::TriggerEvent>(edm::InputTag("hltTriggerSummaryAOD"))),
   tkTracksToken_(consumes<reco::TrackCollection>(edm::InputTag("generalTracks"))),
@@ -273,78 +273,48 @@ HSCPValidator::endJob()
 // ------------- Make gen plots ---------------------------------------------------------
 void HSCPValidator::makeGenPlots(const edm::Event& iEvent)
 {
-  using namespace edm;
+  edm::Handle<edm::View<reco::GenParticle>> genParticles;
+  iEvent.getByToken(genParticlesToken_, genParticles);
 
-  double missingpx=0;
-  double missingpy=0;
-  double missingpx_nohscp=0;
-  double missingpy_nohscp=0;
-  double scalorEt=0;
-  double scalorEt_nohscp=0;
+  double missingpx=0, missingpy=0, missingpx_nohscp=0, missingpy_nohscp=0;
+  double scalorEt=0, scalorEt_nohscp=0;
 
-
-  Handle<HepMCProduct> evt;
-  iEvent.getByToken(token_, evt);
-
-  HepMC::GenEvent * myGenEvent = new  HepMC::GenEvent(*(evt->GetEvent()));
-  for(HepMC::GenEvent::particle_iterator p = myGenEvent->particles_begin();
-      p != myGenEvent->particles_end(); ++p )
+  for(const auto& p : *genParticles)
   {
+    if(p.status() != particleStatus_) continue;
 
-    if((*p)->status() != particleStatus_)
-      continue;
-    //calculate MET(neutrino as MET)
-    if(abs((*p)->pdg_id())!=12 && abs((*p)->pdg_id())!=14 && abs((*p)->pdg_id())!=16){ //for non-neutrino particles.
-       missingpx-=(*p)->momentum().px();
-       missingpy-=(*p)->momentum().py();
-       scalorEt+=(*p)->momentum().perp();
+    if(abs(p.pdgId())!=12 && abs(p.pdgId())!=14 && abs(p.pdgId())!=16){
+       missingpx-=p.px();
+       missingpy-=p.py();
+       scalorEt+=p.pt();
     }
 
-    // Check if the particleId is in our R-hadron list
-    std::vector<int>::const_iterator partIdItr = find(particleIds_.begin(),particleIds_.end(),(*p)->pdg_id());
-    if(partIdItr==particleIds_.end()){
-
-       //calculate MET(neutrino+ HSCP as MET)
-       if(abs((*p)->pdg_id())!=12 && abs((*p)->pdg_id())!=14 && abs((*p)->pdg_id())!=16){ //for non-neutrino particles.
-          missingpx_nohscp-=(*p)->momentum().px();
-          missingpy_nohscp-=(*p)->momentum().py();
-          scalorEt_nohscp+=(*p)->momentum().perp();
-        }
-    }
-    else{
-
-       particleStatusHist_->Fill((*p)->status());
-
-       std::pair<std::map<int,int>::iterator,bool> pair = particleIdsFoundMap_.insert(std::make_pair<int,int>((*p)->pdg_id(),1));
-       if(!pair.second)
-       {
-          ++(pair.first->second);
+    if(std::find(particleIds_.begin(), particleIds_.end(), p.pdgId())==particleIds_.end()){
+       if(abs(p.pdgId())!=12 && abs(p.pdgId())!=14 && abs(p.pdgId())!=16){
+          missingpx_nohscp-=p.px();
+          missingpy_nohscp-=p.py();
+          scalorEt_nohscp+=p.pt();
        }
+    } else {
+       particleStatusHist_->Fill(p.status());
+       auto pair = particleIdsFoundMap_.insert({p.pdgId(),1});
+       if(!pair.second) ++(pair.first->second);
 
-       double mag = sqrt(pow((*p)->momentum().px(),2) + pow((*p)->momentum().py(),2) + pow((*p)->momentum().pz(),2) );
-       particleEtaHist_->Fill((*p)->momentum().eta());
-       particlePhiHist_->Fill((*p)->momentum().phi());
+       double mag = p.p();
+       particleEtaHist_->Fill(p.eta());
+       particlePhiHist_->Fill(p.phi());
        particlePHist_->Fill(mag);
-       particlePtHist_->Fill((*p)->momentum().perp());
-       particleMassHist_->Fill((*p)->generated_mass());
-       float particleP = mag;
-       float particleM = (*p)->generated_mass();
-       particleBetaHist_->Fill(particleP/sqrt(particleP*particleP+particleM*particleM));
-       particleBetaInverseHist_->Fill(sqrt(particleP*particleP+particleM*particleM)/particleP);
+       particlePtHist_->Fill(p.pt());
+       particleMassHist_->Fill(p.mass());
+       particleBetaHist_->Fill(mag/sqrt(mag*mag + p.mass()*p.mass()));
+       particleBetaInverseHist_->Fill(sqrt(mag*mag + p.mass()*p.mass())/mag);
     }
-
   }
 
   h_genhscp_met->Fill(sqrt(missingpx*missingpx+missingpy*missingpy));
   h_genhscp_met_nohscp->Fill(sqrt(missingpx_nohscp*missingpx_nohscp+missingpy_nohscp*missingpy_nohscp));
   h_genhscp_scaloret->Fill(scalorEt);
   h_genhscp_scaloret_nohscp->Fill(scalorEt_nohscp);
-
-
-  delete myGenEvent;
-
-
-
 }
 
 // ------------- Make SimTrack plots ---------------------------------------------------------
@@ -676,58 +646,37 @@ void HSCPValidator::makeSimDigiPlotsECAL(const edm::Event& iEvent)
 // ------------- Make Reco plots ---------------------------------------------------------
 void HSCPValidator::makeRecoPlots(const edm::Event& iEvent)
 {
-  using namespace edm;
-   using namespace reco;
+  edm::Handle<edm::View<reco::GenParticle>> genParticles;
+  iEvent.getByToken(genParticlesToken_, genParticles);
 
-  Handle<HepMCProduct> evt;
-  iEvent.getByToken(token_, evt);
+  edm::Handle<reco::TrackCollection> tkTracks;
+  iEvent.getByToken(tkTracksToken_, tkTracks);
 
-  Handle<TrackCollection> tkTracks;
-  iEvent.getByToken(tkTracksToken_,tkTracks);
-  const reco::TrackCollection tkTC = *(tkTracks.product());
-
-  Handle<ValueMap<DeDxData> >          dEdxTrackHandle;
+  edm::Handle<edm::ValueMap<reco::DeDxData>> dEdxTrackHandle;
   iEvent.getByToken(dEdxTrackToken_, dEdxTrackHandle);
-  const ValueMap<DeDxData> dEdxTrack = *dEdxTrackHandle.product();
+  const auto& dEdxTrack = *dEdxTrackHandle;
 
   for(size_t i=0; i<tkTracks->size(); i++){
-
-     reco::TrackRef trkRef = reco::TrackRef(tkTracks, i);
-
+     reco::TrackRef trkRef(tkTracks, i);
      if(trkRef->pt()<5 || trkRef->normalizedChi2()>10) continue;
 
-     double minR= 999;
-     double hscpgenPt =-1;
+     double minR=999, hscpgenPt=-1;
 
-     HepMC::GenEvent * myGenEvent = new  HepMC::GenEvent(*(evt->GetEvent()));
-     for(HepMC::GenEvent::particle_iterator p = myGenEvent->particles_begin();
-         p != myGenEvent->particles_end(); ++p )
-     {
-
-        if((*p)->status() != particleStatus_)
-           continue;
-        // Check if the particleId is in our R-hadron list
-        std::vector<int>::const_iterator partIdItr = find(particleIds_.begin(),particleIds_.end(),(*p)->pdg_id());
-        if(partIdItr!=particleIds_.end()){
-
-           //calculate DeltaR
-           double distance =pow((*p)->momentum().eta()-trkRef->eta(),2)+pow((*p)->momentum().phi()-trkRef->phi(),2);
-           distance =sqrt(distance);
-           if(distance <minR ){
-              minR = distance;
-              hscpgenPt= (*p)->momentum().perp();
+     for(const auto& p : *genParticles){
+        if(p.status()!=particleStatus_) continue;
+        if(std::find(particleIds_.begin(), particleIds_.end(), p.pdgId())!=particleIds_.end()){
+           double distance = std::sqrt(std::pow(p.eta()-trkRef->eta(),2)+std::pow(p.phi()-trkRef->phi(),2));
+           if(distance < minR){
+              minR=distance;
+              hscpgenPt=p.pt();
            }
         }
      }
-     RecoHSCPPtVsGenPt->Fill(trkRef->pt(),hscpgenPt);
-
-     delete myGenEvent;
-     double dedx = dEdxTrack[trkRef].dEdx();
-     dedxVsp->Fill( trkRef->p(),dedx);
-
+     RecoHSCPPtVsGenPt->Fill(trkRef->pt(), hscpgenPt);
+     dedxVsp->Fill(trkRef->p(), dEdxTrack[trkRef].dEdx());
   }
-
 }
+
 
 // ------------- Make simDigi plots RPC -------------------------------------------------
 void HSCPValidator::makeSimDigiPlotsRPC(const edm::Event& iEvent)

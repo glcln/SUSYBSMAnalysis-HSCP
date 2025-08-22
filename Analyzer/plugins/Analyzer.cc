@@ -255,9 +255,18 @@ Analyzer::Analyzer(const edm::ParameterSet& iConfig)
 // define the selection to be considered later for the optimization
 // WARNING: recall that this has a huge impact on the analysis time AND on the output file size --> be carefull with your choice
    
-  topoToken_ = esConsumes();
-  tkGeometryToken_ = esConsumes();
-  pixelCPEToken_   = esConsumes();
+  // TrackerTopology
+  edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> topoToken_ = 
+      esConsumes<TrackerTopology, TrackerTopologyRcd>();
+
+  // TrackerGeometry
+  edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> tkGeometryToken_ = 
+      esConsumes<TrackerGeometry, TrackerDigiGeometryRecord>();
+
+  // PixelClusterParameterEstimator (avec label si besoin, sinon "")
+  edm::ESGetToken<PixelClusterParameterEstimator, TkPixelCPERecord> pixelCPEToken_ = 
+      esConsumes<PixelClusterParameterEstimator, TkPixelCPERecord>(edm::ESInputTag{"", pixelCPE_});
+
 
 
   useClusterCleaning = true;

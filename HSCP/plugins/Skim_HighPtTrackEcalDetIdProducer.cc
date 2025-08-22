@@ -44,9 +44,10 @@
 #include "DataFormats/EcalDetId/interface/EEDetId.h"
 #include "DataFormats/DetId/interface/DetIdCollection.h"
 
-#include "Geometry/CaloEventSetup/interface/CaloTopologyRecord.h"
+#include "Geometry/Records/interface/CaloTopologyRecord.h"
 #include "Geometry/CaloTopology/interface/CaloTopology.h"
 #include "Geometry/CaloTopology/interface/CaloSubdetectorTopology.h"
+
 
 //
 // class declaration

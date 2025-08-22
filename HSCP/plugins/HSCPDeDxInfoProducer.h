@@ -21,14 +21,14 @@
 
 #include "RecoTracker/DeDx/interface/DeDxTools.h"
 #include "TrackingTools/PatternTools/interface/TrajTrackAssociation.h"
-
+#include "FWCore/Framework/interface/stream/EDProducer.h"
 #include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCPDeDxInfo.h"
 
 //
 // class declaration
 //
 
-class HSCPDeDxInfoProducer : public edm::stream::EDProducer<> {
+class HSCPDeDxInfoProducer : public edm::stream::EDProducer {
 public:
   explicit HSCPDeDxInfoProducer(const edm::ParameterSet&);
   ~HSCPDeDxInfoProducer();

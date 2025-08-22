@@ -9,6 +9,7 @@
 #include "DataFormats/TrackReco/interface/DeDxData.h"
 #include "DataFormats/SiStripDetId/interface/SiStripDetId.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/SiStripCluster/interface/SiStripCluster.h"
 #include <TTree.h>
 #include <string.h>
 #include "TH3.h"
@@ -38,7 +39,15 @@ reco::DeDxData computedEdx(const reco::DeDxHitInfo* dedxHits, double* scaleFacto
 
 bool clusterCleaning(std::vector<int> ampls,  int crosstalkInv=0, uint8_t * exitCode=NULL);
 void printClusterCleaningMessage (uint8_t exitCode);
-std::vector<int> convert(const std::vector<unsigned char>& input);
+
+template <typename Container>
+std::vector<int> convert(const Container& input) {
+    std::vector<int> out;
+    out.reserve(input.size());
+    for (auto v : input) out.push_back(static_cast<int>(v));
+    return out;
+}
+
 std::vector<int> CrossTalkInv(const std::vector<int>&  Q, const float x1=0.10, const float x2=0.04, bool way=true,float threshold=20,float thresholdSat=25);
 
 

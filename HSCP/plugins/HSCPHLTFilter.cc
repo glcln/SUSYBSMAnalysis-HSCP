@@ -13,6 +13,7 @@
 #include "DataFormats/HLTReco/interface/TriggerEvent.h"
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "DataFormats/HLTReco/interface/TriggerObject.h"
+#include "FWCore/Framework/interface/one/EDFilter.h"
 
 //
 // class declaration
@@ -20,15 +21,15 @@
 
 using namespace edm;
 
-class HSCPHLTFilter : public edm::EDFilter {
+class HSCPHLTFilter : public edm::one::EDFilter<edm::one::SharedResources> {
    public:
       explicit HSCPHLTFilter(const edm::ParameterSet&);
       ~HSCPHLTFilter();
 
    private:
-      virtual void beginJob() override ;
+      virtual void beginJob() override;
       virtual bool filter(edm::Event&, const edm::EventSetup&) override;
-      virtual void endJob() override ;
+      virtual void endJob() override;
       bool isDuplicate(unsigned int Run, unsigned int Event);
 
       bool IncreasedTreshold(const trigger::TriggerEvent& trEv, const edm::InputTag& InputPath, double NewThreshold, double etaCut, int NObjectAboveThreshold, bool averageThreshold);
@@ -346,17 +347,4 @@ bool HSCPHLTFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
    return false;
 }
 
-
-
-
-
-
-
-
-
-
 DEFINE_FWK_MODULE(HSCPHLTFilter);
-
-
-
-

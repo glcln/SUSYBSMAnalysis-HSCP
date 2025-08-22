@@ -52,6 +52,7 @@
 #include "DataFormats/TrackReco/interface/DeDxData.h"
 #include "DataFormats/TrackReco/interface/DeDxHitInfo.h"
 #include "RecoTracker/DeDx/interface/DeDxTools.h"
+#include "DataFormats/DetId/interface/DetId.h"
 #include "DataFormats/TrackReco/interface/TrackToTrackMap.h"
 
 #include "DataFormats/MuonReco/interface/MuonFwd.h"
@@ -59,13 +60,11 @@
 #include "AnalysisDataFormats/SUSYBSMObjects/interface/MuonSegment.h"
 #include "DataFormats/MuonReco/interface/MuonTimeExtra.h"
 #include "DataFormats/MuonReco/interface/MuonTimeExtraMap.h"
+#include "DataFormats/SiStripCluster/interface/SiStripClusterTools.h"
 
 
-#include "SimDataFormats/CrossingFrame/interface/CrossingFrame.h"
-#include "SimDataFormats/CrossingFrame/interface/MixCollection.h"
 #include "SimDataFormats/TrackerDigiSimLink/interface/StripDigiSimLink.h"
 #include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
-//#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/SiStripDetId/interface/SiStripDetId.h"
 
@@ -75,18 +74,16 @@
 #include "DataFormats/Scalers/interface/LumiScalers.h"
 #include "DataFormats/Luminosity/interface/LumiDetails.h"
 
-
 #include "HSCP_codeFromAnalysis.h"
 
 #include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCParticle.h"
 #include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCPIsolation.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
+
 
 #include "TH1.h"
 #include <TTree.h>
 #include <string.h>
-//
-// class declaration
-//
 
 // If the analyzer does not use TFileService, please remove
 // the template argument to the base class so the class inherits
@@ -119,28 +116,21 @@ class calib_ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
       virtual void endJob() override;
 
       // ----------member data ---------------------------
-//       edm::EDGetTokenT<reco::VertexCollection> m_primaryVertexTag;
        edm::EDGetTokenT<reco::TrackCollection>  m_tracksTag;
        edm::EDGetTokenT<reco::DeDxHitInfoAss>   m_dedxTag;
        edm::EDGetTokenT<edm::ValueMap<int>> m_dedxPrescaleTag;
-       edm::ESGetToken<SetupData, SetupRecord> setupToken_;
+       edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> setupToken_;
        edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> tTopoToken_;
 
 
-
        int printOut_;
-//
 
        TH3F* dEdxTemplatesUncorr = NULL;
        TH3F* dEdxTemplatesCorr = NULL;
 
-
-//       TH1D * histo; 
        TTree *smalltree;
        int      tree_runNumber ;
        uint32_t      tree_event ;
-//       int      tree_npv;
-//       int      tree_ngoodpv;
 
        int      tree_ntracks ;
        float    tree_track_pt[nMaxTrack];
@@ -197,21 +187,9 @@ class calib_ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        int      tree_strip_ampl[nMaxStrip];
        int      tree_nstrips_corr;
        int      tree_strip_ampl_corr[nMaxStripprim];
-
-
 };
 
-//
-// constants, enums and typedefs
-//
 
-//
-// static data member definitions
-//
-
-//
-// constructors and destructor
-//
 calib_ntuple::calib_ntuple(const edm::ParameterSet& iConfig)
 /*
  :
@@ -226,7 +204,7 @@ calib_ntuple::calib_ntuple(const edm::ParameterSet& iConfig)
    m_dedxPrescaleTag = consumes<edm::ValueMap<int>>(iConfig.getParameter<edm::InputTag>("dEdxHitInfoPrescale"));
    printOut_ = iConfig.getUntrackedParameter<int>("printOut");
 
-   setupToken_ = esConsumes<SetupData, SetupRecord>();
+   setupToken_ = esConsumes();
    tTopoToken_ = esConsumes<TrackerTopology, TrackerTopologyRcd>();
 
 
@@ -300,13 +278,7 @@ calib_ntuple::calib_ntuple(const edm::ParameterSet& iConfig)
 }
 
 
-calib_ntuple::~calib_ntuple()
-{
- 
-   // do anything here that needs to be done at desctruction time
-   // (e.g. close files, deallocate resources etc.)
-
-}
+calib_ntuple::~calib_ntuple() {}
 
 
 //
@@ -314,8 +286,7 @@ calib_ntuple::~calib_ntuple()
 //
 
 // ------------ method called for each event  ------------
-void
-calib_ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
+void calib_ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
     using namespace edm;
     using namespace reco;
@@ -326,26 +297,6 @@ calib_ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     EventID myEvId = iEvent.id();
     tree_runNumber = myEvId.run();
     tree_event = myEvId.event();
-
-    
-/*
-    edm::Handle<reco::VertexCollection> primaryVertex ;
-    iEvent.getByToken(m_primaryVertexTag,primaryVertex);
-    tree_npv = primaryVertex->size();
-    const std::vector<reco::Vertex>& vertexColl = *primaryVertex;
-    int index_pv=-1;
-    int goodVerts=0;
-    bool firstpvfound=false;
-    for(unsigned int i=0;i<vertexColl.size();i++){
-      if(vertexColl[i].isFake() || fabs(vertexColl[i].z())>24 || vertexColl[i].position().rho()>2 || vertexColl[i].ndof()<=4)continue; //only consider good vertex
-      if(!firstpvfound) {
-          firstpvfound=true;
-          index_pv=i;
-      }
-      goodVerts++;
-    }
-    tree_ngoodpv = goodVerts;
-*/
 
     edm::Handle<reco::TrackCollection> trackCollectionHandle;
     iEvent.getByToken(m_tracksTag,trackCollectionHandle); 
@@ -508,7 +459,8 @@ calib_ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
              }
              else {
                SiStripDetId SSdetId(detid);
-               tree_dedx_modulgeom[tree_dedxhits]=SSdetId.moduleGeometry();
+               SiStripModuleGeometry moduleGeom = SSdetId.moduleGeometry();
+               tree_dedx_modulgeom[tree_dedxhits] = static_cast<int>(moduleGeom);
              }
              tree_dedx_insideTkMod[tree_dedxhits]=isHitInsideTkModule(dedxHits->pos(h), detid, detid.subdetId()>=3?dedxHits->stripCluster(h):NULL);
              tree_dedx_charge[tree_dedxhits]=dedxHits->charge(h);
@@ -537,10 +489,10 @@ calib_ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                tree_sclus_charge_corr[tree_dedxhits]=0;
                tree_sclus_sat254[tree_dedxhits]=false;
                tree_sclus_sat255[tree_dedxhits]=false;
-               tree_sclus_shape[tree_dedxhits]=DeDxTools::shapeSelection(*(dedxHits->stripCluster(h)));
+               tree_sclus_shape[tree_dedxhits] = ::SiStripClusterTools::shapeSelection(*(dedxHits->stripCluster(h)));
 
-               std::vector <uint8_t> amplis = dedxHits->stripCluster(h)->amplitudes();
-               std::vector <int> amps = convert(amplis);
+
+               std::vector<int> amps = convert(dedxHits->stripCluster(h)->amplitudes());
                if (printOut_ > 0) std::cout << " amps.size() "<< amps.size() << std::endl;
 
 
@@ -600,21 +552,16 @@ calib_ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
              
           } //end if MaxDeDx
           else {
-                   std::cout << "Limit reached for tree_dedxhits "<< tree_dedxhits << std::endl;
+            std::cout << "Limit reached for tree_dedxhits "<< tree_dedxhits << std::endl;
           } // end if MaxDeDx
         } // end loop dEdx
         tree_ntracks++;
       } // end if MaxTracks 
       else {
-                   std::cout << "Limit reached for tree_ntracks "<< tree_ntracks << std::endl;
+        std::cout << "Limit reached for tree_ntracks "<< tree_ntracks << std::endl;
       } // end if MaxTracks
 
-
-
-
     } // end loop TrackCollection
-
-
 
     smalltree -> Fill();
 
@@ -624,37 +571,21 @@ calib_ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 #endif
    
 #ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
-   const SetupData& pSetup = iSetup.getData(setupToken_);
+   const TrackerGeometry& pSetup = iSetup.getData(setupToken_);
 #endif
 }
 
 
-// ------------ method called once each job just before starting event loop  ------------
-void 
-calib_ntuple::beginJob()
-{
-}
+void calib_ntuple::beginJob() {}
 
-// ------------ method called once each job just after ending the event loop  ------------
-void 
-calib_ntuple::endJob() 
-{
-}
+void calib_ntuple::endJob() {}
 
-// ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
-void
-calib_ntuple::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+void calib_ntuple::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   //The following says we do not know what parameters are allowed so do no validation
   // Please change this to state exactly what you do use, even if it is no parameters
   edm::ParameterSetDescription desc;
   desc.setUnknown();
   descriptions.addDefault(desc);
-
-  //Specify that only 'tracks' is allowed
-  //To use, remove the default given above and uncomment below
-  //ParameterSetDescription desc;
-  //desc.addUntracked<edm::InputTag>("tracks","ctfWithMaterialTracks");
-  //descriptions.addDefault(desc);
 }
 
 //define this as a plug-in

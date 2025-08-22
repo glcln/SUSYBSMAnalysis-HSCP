@@ -21,7 +21,8 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include "Geometry/RPCGeometry/interface/RPCGeometry.h"
-#include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/Common/interface/View.h"
 #include "FWCore/Common/interface/TriggerResultsByName.h"
 #include "DataFormats/HLTReco/interface/TriggerEvent.h"
 #include "DataFormats/Common/interface/TriggerResults.h"
@@ -39,16 +40,16 @@
 // class declaration
 //
 
-class HSCPValidator : public edm::one::EDAnalyzer {
+class HSCPValidator : public edm::one::EDAnalyzer<edm::one::SharedResources> {
    public:
       explicit HSCPValidator(const edm::ParameterSet&);
       ~HSCPValidator();
 
 
    private:
-      virtual void beginJob() ;
-      virtual void analyze(const edm::Event&, const edm::EventSetup&);
-      virtual void endJob() ;
+      virtual void beginJob() override;
+      virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
+      virtual void endJob() override;
       std::string intToString(int num);
       void makeGenPlots(const edm::Event& iEvent);
       void makeSimTrackPlots(const edm::Event& iEvent);
@@ -65,7 +66,7 @@ class HSCPValidator : public edm::one::EDAnalyzer {
       bool doRecoPlots_;
 
       // GEN section
-      edm::EDGetTokenT<edm::HepMCProduct> token_;
+      edm::EDGetTokenT<edm::View<reco::GenParticle>> genParticlesToken_;
       edm::EDGetTokenT<edm::SimTrackContainer> simTracksToken_;
       edm::EDGetTokenT<trigger::TriggerEvent> trEvToken_;
       edm::EDGetTokenT<edm::TriggerResults>trResToken_;

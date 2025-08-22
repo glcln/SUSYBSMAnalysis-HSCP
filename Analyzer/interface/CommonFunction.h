@@ -1429,7 +1429,8 @@ bool isHitInsideTkModule(const LocalPoint hitPos, const DetId& detid, const SiSt
     return true;
   }  //do nothing for pixel modules
   SiStripDetId SSdetId(detid);
-  int moduleGeometry = SSdetId.moduleGeometry();
+  SiStripModuleGeometry moduleGeom = SSdetId.moduleGeometry();
+  int moduleGeometry = static_cast<int>(moduleGeom);
 
   //clean along the apv lines
   if (cluster &&
@@ -1718,7 +1719,8 @@ reco::DeDxData computedEdx (const float& track_eta,
       }  // 15 == pixel
       else {
         SiStripDetId SSdetId(detid);
-        moduleGeometry = SSdetId.moduleGeometry();
+        SiStripModuleGeometry moduleGeom = SSdetId.moduleGeometry();
+        moduleGeometry = static_cast<int>(moduleGeom);
       }
 
       /*

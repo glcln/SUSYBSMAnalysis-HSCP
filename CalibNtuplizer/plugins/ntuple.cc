@@ -56,8 +56,6 @@
 #include "DataFormats/MuonReco/interface/MuonSelectors.h"
 
 
-#include "SimDataFormats/CrossingFrame/interface/CrossingFrame.h"
-#include "SimDataFormats/CrossingFrame/interface/MixCollection.h"
 #include "SimDataFormats/TrackerDigiSimLink/interface/StripDigiSimLink.h"
 #include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
 //#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
@@ -69,6 +67,8 @@
 
 #include "DataFormats/Scalers/interface/LumiScalers.h"
 #include "DataFormats/Luminosity/interface/LumiDetails.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
+
 
 
 #include "HSCP_codeFromAnalysis.h"
@@ -1317,27 +1317,8 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
           if(!dedxHitsRef.isNull())dedxHits = &(*dedxHitsRef);
       }
 
-   
-
-
-//     for(reco::TrackCollection::const_iterator track = trackCollectionHandle->begin(); track != trackCollectionHandle->end(); ++track)
-      //basic track quality cuts
-      ////if(track.isNull())continue;
-      //if(track->chi2()/track->ndof()>5 )continue;
-      //if(track->found()<8) continue;
-      //if(track->pt() < 5) continue;
-
       if (tree_ntracks < nMaxTrack) {
 
-
-/*
-       tree_track_pt[tree_ntracks]= track->pt();
-       tree_track_p[tree_ntracks]= track->p();
-       tree_track_eta[tree_ntracks]= track->eta();
-       tree_track_phi[tree_ntracks]= track->phi();
-       tree_track_chi2[tree_ntracks]= track->chi2()/track->ndof();
-       tree_track_nvalidhits[tree_ntracks]= track->numberOfValidHits();
-*/
        tree_track_pt[tree_ntracks]= pt_tr;
        tree_track_pterr[tree_ntracks]= pterr_tr;
        tree_track_p[tree_ntracks]=  p_tr;
@@ -1388,22 +1369,6 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
        else {
         tree_track_prescale[tree_ntracks] = -1;
        }
-
-       // load the dedx estimator
-       /*
-       if (dEdxTrackHandle.isValid()) {
-         if (printOut_ > 0) std::cout << " valid dEdxTrackHandle " << std::endl;
-         if (printOut_ > 0) std::cout << " DeDX esimtator  "<< dEdxTrack[track].dEdx()
-                 << "  " << dEdxTrack[track].dEdxError() 
-                 << "  " << dEdxTrack[track].numberOfSaturatedMeasurements()
-                 << "  " << dEdxTrack[track].numberOfMeasurements() << std::endl;
-         // existe aussi un dedxPixelHarmonic2 et dedxTruncated40 qui sont stockés
-         tree_track_dedx_harmonic2[tree_ntracks]= dEdxTrack[track].dEdx();
-       }
-       else tree_track_dedx_harmonic2[tree_ntracks]= -10;
-       */
-
-       //hit level dEdx information (only done for MIPs)
 
        if (printOut_ > 0) std::cout << " with " << dedxHits->size() << " dedxHits info " << std::endl;
 
@@ -1463,7 +1428,8 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
              if (detid.subdetId()<3) tree_dedx_modulgeom[tree_dedxhits]=15;
              else {
                SiStripDetId SSdetId(detid);
-               tree_dedx_modulgeom[tree_dedxhits]=SSdetId.moduleGeometry();
+               SiStripModuleGeometry moduleGeom = SSdetId.moduleGeometry();
+               tree_dedx_modulgeom[tree_dedxhits] = static_cast<int>(moduleGeom);
              }
              tree_dedx_insideTkMod[tree_dedxhits]=isHitInsideTkModule(dedxHits->pos(h), detid, detid.subdetId()>=3?dedxHits->stripCluster(h):NULL);
              tree_dedx_charge[tree_dedxhits]=dedxHits->charge(h);
@@ -1714,13 +1680,6 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         probXYonTrack = combineProbs(probXYonTrackWMulti, numRecHits);
         probQonTrackNoLayer1 = combineProbs(probQonTrackWMultiNoLayer1, numRecHitsNoLayer1);
         probXYonTrackNoLayer1 = combineProbs(probXYonTrackWMultiNoLayer1, numRecHitsNoLayer1);
-/*
-        if(probQonTrack!=0) {
-          cout << "------------------------------" << endl;
-          cout << "probQonTrack: " << probQonTrack << " and probXYonTrack: " << probXYonTrack << endl;
-          cout << "probQonTrackNoLayer1: " << probQonTrackNoLayer1 << " and probXYonTrackNoLayer1: " << probXYonTrackNoLayer1 << endl;
-        }
-*/
         tree_track_probQ[tree_ntracks] = probQonTrack;
         tree_track_probQNoL1[tree_ntracks] = probQonTrackNoLayer1;
         tree_track_probXY[tree_ntracks] = probXYonTrack;
@@ -1732,8 +1691,6 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       else {
                    std::cout << "Limit reached for tree_ntracks "<< tree_ntracks << std::endl;
       } // end if MaxTracks
-
-
 
     } // end loop TrackCollection
 
@@ -2019,21 +1976,6 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
            tree_hscp_iso3_hcal[tree_hscp]=-10;
        }
 
-//       if(TypeMode!=3) track = hscp.trackRef();
-//       else {
-//         if(muon.isNull()) continue;
-//         track = muon->standAloneMuon();
-//       }
-       //skip events without track
-//       if(track.isNull())continue;
-       
-       //require a track segment in the muon system
-       //if(TypeMode>1 && TypeMode!=5 && (muon.isNull() || !muon->isStandAloneMuon()))continue;
-      
-       //Apply a scale factor to muon only analysis to account for differences seen in data/MC preselection efficiency
-       //For eta regions where Data > MC no correction to be conservative
-       //if(!isData && TypeMode==3 && scaleFactor(track->eta())<RNG->Uniform(0, 1)) continue;
-     
         tree_hscp++;
        }
 
