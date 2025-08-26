@@ -12,6 +12,13 @@
 //
 //=======================================================================================
 #include "SaturationCorrection.h"
+#include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
+#include "FWCore/Framework/interface/ESHandle.h"
+#include "FWCore/Framework/interface/EventSetup.h"
+#include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
+#include "RecoLocalTracker/Records/interface/TkPixelCPERecord.h"
+#include "RecoLocalTracker/ClusterParameterEstimator/interface/PixelClusterParameterEstimator.h"
+#include "RecoTracker/Record/interface/TrackerRecoGeometryRecord.h"
 #include "SaturationCorrectionInStrip.h"  // Method to correct saturated strip clusters  
 SaturationCorrection sc;
 void LoadCorrectionParameters() {
@@ -829,7 +836,7 @@ public:
 //      Common functions
 //=============================================================
 
-TObject* GetObjectFromPath(TDirectory* File, std::string Path, bool GetACopy = false) {
+inline TObject* GetObjectFromPath(TDirectory* File, std::string Path, bool GetACopy = false) {
   size_t pos = Path.find("/");
   if (pos < 256) {
     std::string firstPart = Path.substr(0, pos);
@@ -850,14 +857,14 @@ TObject* GetObjectFromPath(TDirectory* File, std::string Path, bool GetACopy = f
 }
 
 // similar to the above code
-TObject* GetObjectFromPath(TDirectory* Container, TDirectory* File, std::string Path, bool GetACopy = false) {
+inline TObject* GetObjectFromPath(TDirectory* Container, TDirectory* File, std::string Path, bool GetACopy = false) {
   TObject* toreturn = GetObjectFromPath(File, Path, GetACopy);
   if (TH1* th1 = dynamic_cast<TH1*>(toreturn))
     th1->SetDirectory(Container);
   return toreturn;
 }
 
-TH1D* GetProjectionFromPath(TDirectory* File, std::string Path, int CutIndex, std::string Name) {
+inline TH1D* GetProjectionFromPath(TDirectory* File, std::string Path, int CutIndex, std::string Name) {
   TH2D* tmp = (TH2D*)GetObjectFromPath(File, Path, false);
   if (!tmp)
     return nullptr;
@@ -910,12 +917,12 @@ std::string LegendFromType(const std::string& InputPattern) {
   return std::string("unknown");
 }
 
-std::vector<int> convert(const std::vector<unsigned char>& input) {
-  std::vector<int> output;
-  for (unsigned int i = 0; i < input.size(); i++) {
-    output.push_back((int)input[i]);
-  }
-  return output;
+template <typename Container>
+std::vector<int> convert(const Container& input) {
+    std::vector<int> out;
+    out.reserve(input.size());
+    for (auto v : input) out.push_back(static_cast<int>(v));
+    return out;
 }
 
 // compute deltaR between two point (eta,phi) (eta,phi)
@@ -1525,6 +1532,8 @@ reco::DeDxData computedEdx (const float& track_eta,
                            string year,
                            const reco::DeDxHitInfo* dedxHits,
                            float* scaleFactors,
+                           const edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord>& tkGeomToken_,
+                           const edm::ESGetToken<PixelClusterParameterEstimator, TkPixelCPERecord>& pixelCpeToken_,
                            TH3* templateHisto = nullptr,
                            bool usePixel = false,
                            bool useStrip = true,
@@ -1557,9 +1566,9 @@ reco::DeDxData computedEdx (const float& track_eta,
   std::vector<float> vectPixel;
 
 
-  const TrackerGeometry* tkGeometry = &iSetup.getData(iSetup.get<TrackerDigiGeometryRecord>());
-  const PixelClusterParameterEstimator* pixelCPE = &iSetup.getData(iSetup.get<TkPixelCPERecord>());
-  
+  const TrackerGeometry& tkGeometry = iSetup.getData(tkGeomToken_);
+  const PixelClusterParameterEstimator& pixelCPE = iSetup.getData(pixelCpeToken_);
+
 
   // loop in order to have the number of saturated clusters in a track
   unsigned int nsatclust = 0;
@@ -1577,7 +1586,7 @@ reco::DeDxData computedEdx (const float& track_eta,
     if (test_sat)
       nsatclust++;
   }
-  float rsat = (float)nsatclust / (float)dedxHits->size();
+  //float rsat = (float)nsatclust / (float)dedxHits->size();
 
   unsigned int NSat = 0;
   unsigned int SiStripNOM = 0;
@@ -1606,9 +1615,9 @@ reco::DeDxData computedEdx (const float& track_eta,
     if (detid.subdetId() <3 && usePixelClusterCleaning) { // for pixel only
          auto const* pixelCluster =  dedxHits->pixelCluster(h);
          if (pixelCluster == nullptr)  continue;
-         const GeomDetUnit& geomDet = *tkGeometry->idToDetUnit(detid);
+         const GeomDetUnit& geomDet = *tkGeometry.idToDetUnit(detid);
          LocalVector lv = geomDet.toLocal(GlobalVector(track_px, track_py, track_pz));
-         auto reCPE = std::get<2>(pixelCPE->getParameters(*pixelCluster, geomDet, LocalTrajectoryParameters(dedxHits->pos(h), lv, track_charge)));
+         auto reCPE = std::get<2>(pixelCPE.getParameters(*pixelCluster, geomDet, LocalTrajectoryParameters(dedxHits->pos(h), lv, track_charge)));
          float probQ = SiPixelRecHitQuality::thePacking.probabilityQ(reCPE);
          float probXY = SiPixelRecHitQuality::thePacking.probabilityXY(reCPE);
          bool cpeHasFailed = false;
@@ -1669,8 +1678,8 @@ reco::DeDxData computedEdx (const float& track_eta,
       crossTalkInvAlgo = 4;
       bool totrash = true;
       if (crossTalkInvAlgo == 1) amplitudes = SaturationCorrection(amplitudes,0.10,0.04,true,20,25);
-      if (crossTalkInvAlgo == 2) amplitudes = Correction(amplitudes, Sdetid.moduleGeometry(), rsat, 25, 40, 0.6);
-      if (crossTalkInvAlgo == 3) amplitudes = CrossTalkInv(Correction(amplitudes, Sdetid.moduleGeometry(), rsat, 25, 40, 0.6), 0.10, 0.04, false);
+      //if (crossTalkInvAlgo == 2) amplitudes = Correction(amplitudes, Sdetid.moduleGeometry(), rsat, 25, 40, 0.6);
+      //if (crossTalkInvAlgo == 3) amplitudes = CrossTalkInv(Correction(amplitudes, Sdetid.moduleGeometry(), rsat, 25, 40, 0.6), 0.10, 0.04, false);
       if (crossTalkInvAlgo == 4) amplitudes = ReturnCorrVec(amplitudes, stripLayerIndex, totrash);
 
 
@@ -1755,7 +1764,7 @@ reco::DeDxData computedEdx (const float& track_eta,
       //skip templates ias = 2 --> pixel only, with pixL1 or not
       //
       bool isBPIXL1=false;
-      int numLayers = tkGeometry->numberOfLayers(PixelSubdetector::PixelBarrel);
+      int numLayers = tkGeometry.numberOfLayers(PixelSubdetector::PixelBarrel);
       if ((numLayers == 4) && ((detid.subdetId() == PixelSubdetector::PixelBarrel) && (tTopo->pxbLayer(detid) == 1))) isBPIXL1=true;  // only for 2017 and 2018
       if (skip_templates_ias == 2 && (
                   detid.subdetId()>2 ||
@@ -1974,12 +1983,10 @@ bool passTriggerPatterns(edm::Handle<edm::TriggerResults> trigger,
                          std::vector<std::string> patterns) {
   for (unsigned int i = 0; i < triggerNames.triggerNames().size(); i++) {
     TString name = triggerNames.triggerNames()[i];
-    for (TString const& pattern : patterns) {
-        if (pattern.Length()==0) {
-          return false;
-        }
-      if (name.Contains(pattern) && trigger->accept(i))
-        return true;
+    for (const std::string& patternStr : patterns) {
+      TString pattern(patternStr);
+      if (pattern.Length() == 0) return false;
+      if (name.Contains(pattern) && trigger->accept(i)) return true;
     }
   }
   return false;

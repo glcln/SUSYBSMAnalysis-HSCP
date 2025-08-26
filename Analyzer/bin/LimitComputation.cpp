@@ -30,7 +30,7 @@
 #include <TSystem.h>
 //#include "tdrstyle.C"
 
-#include "../interface/CommonFunction.h"
+#include "SUSYBSMAnalysis/Analyzer/interface/CommonFunction.h"
 #include "HistoTools.h"
 #include "tdrstyle.h"
 #include "ArgumentParser.h"

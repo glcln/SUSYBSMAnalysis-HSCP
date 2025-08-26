@@ -35,6 +35,8 @@
 #include "Geometry/DTGeometry/interface/DTSuperLayer.h"
 #include "Geometry/CSCGeometry/interface/CSCGeometry.h"
 #include "TrackingTools/Records/interface/TrackingComponentsRecord.h"
+#include "FWCore/Framework/interface/stream/EDProducer.h"
+
 
 #include <vector>
 #include <iostream>

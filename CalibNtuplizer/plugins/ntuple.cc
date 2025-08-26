@@ -45,7 +45,6 @@
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/TrackReco/interface/DeDxData.h"
 #include "DataFormats/TrackReco/interface/DeDxHitInfo.h"
-#include "RecoTracker/DeDx/interface/DeDxTools.h"
 #include "DataFormats/TrackReco/interface/TrackToTrackMap.h"
 
 #include "DataFormats/MuonReco/interface/MuonFwd.h"
@@ -87,6 +86,8 @@
 #include "DataFormats/JetReco/interface/PFJetCollection.h"
 
 #include "DataFormats/PatCandidates/interface/MHT.h"
+#include "SimDataFormats/CrossingFrame/interface/CrossingFrame.h"
+#include "SimDataFormats/TrackingHit/interface/PSimHit.h"
 
 // new from Tamas
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
@@ -173,7 +174,6 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> tTopoToken_;
        edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> tkGeometryToken_;
        edm::ESGetToken<PixelClusterParameterEstimator, TkPixelCPERecord> pixelCPEToken_;
-       edm::ESGetToken<SetupData, SetupRecord> setupToken_;
 
 
 //       edm::EDGetTokenT< edm::ValueMap<reco::DeDxData> > dEdxTrackToken_;
@@ -499,7 +499,6 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
    tTopoToken_      = esConsumes<TrackerTopology, TrackerTopologyRcd>();
    tkGeometryToken_ = esConsumes<TrackerGeometry, TrackerDigiGeometryRecord>();
    pixelCPEToken_   = esConsumes<PixelClusterParameterEstimator, TkPixelCPERecord>(edm::ESInputTag("", pixelCPE_));
-   setupToken_ = esConsumes<SetupData, SetupRecord>();
 
 
    if (m_doRecomputeMuTim) {
@@ -1991,10 +1990,6 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 #ifdef THIS_IS_AN_EVENT_EXAMPLE
    Handle<ExampleData> pIn;
    iEvent.getByLabel("example",pIn);
-#endif
-   
-#ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
-   const SetupData& pSetup = iSetup.getData(setupToken_);
 #endif
 }
 

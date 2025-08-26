@@ -19,16 +19,22 @@
 #include "DataFormats/TrackReco/interface/DeDxHit.h"
 #include "DataFormats/TrackReco/interface/Track.h"
 
-#include "RecoTracker/DeDx/interface/DeDxTools.h"
+#include "DataFormats/SiStripCluster/interface/SiStripClusterTools.h"
 #include "TrackingTools/PatternTools/interface/TrajTrackAssociation.h"
 #include "FWCore/Framework/interface/stream/EDProducer.h"
 #include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCPDeDxInfo.h"
+#include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
+#include "DataFormats/TrackerRecHit2D/interface/BaseTrackerRecHit.h"
+#include "DataFormats/TrackerRecHit2D/interface/OmniClusterRef.h"
+#include "DataFormats/TrackerRecHit2D/interface/SiStripMatchedRecHit2D.h"
+
+
 
 //
 // class declaration
 //
 
-class HSCPDeDxInfoProducer : public edm::stream::EDProducer {
+class HSCPDeDxInfoProducer : public edm::stream::EDProducer<> {
 public:
   explicit HSCPDeDxInfoProducer(const edm::ParameterSet&);
   ~HSCPDeDxInfoProducer();
@@ -36,6 +42,7 @@ public:
 private:
   virtual void beginRun(edm::Run const& run, const edm::EventSetup&) override;
   virtual void produce(edm::Event&, const edm::EventSetup&) override;
+
 
   void   makeCalibrationMap(const TrackerGeometry& tkGeom);
   void   processHit(const TrackingRecHit* recHit, float trackMomentum, float& cosine, susybsm::HSCPDeDxInfo& hscpDeDxInfo,  LocalPoint HitLocalPos);
@@ -68,7 +75,6 @@ private:
 
   std::string       Reccord;
   std::string       ProbabilityMode;
-  TH3F*             Prob_ChargePath;
 
   edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> tkGeomToken_;
 };

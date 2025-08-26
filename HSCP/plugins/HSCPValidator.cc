@@ -235,7 +235,7 @@ HSCPValidator::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     makeSimTrackPlots(iEvent);
   if(doSimDigiPlots_){
     makeSimDigiPlotsECAL(iEvent);
-    makeSimDigiPlotsRPC(iEvent);
+    makeSimDigiPlotsRPC(iEvent, rpcGeo);
   }
   if(doHLTPlots_){
     makeHLTPlots(iEvent);
@@ -679,7 +679,7 @@ void HSCPValidator::makeRecoPlots(const edm::Event& iEvent)
 
 
 // ------------- Make simDigi plots RPC -------------------------------------------------
-void HSCPValidator::makeSimDigiPlotsRPC(const edm::Event& iEvent)
+void HSCPValidator::makeSimDigiPlotsRPC(const edm::Event& iEvent, const RPCGeometry& rpcGeo)
 {
   using namespace edm;
 
@@ -716,6 +716,7 @@ void HSCPValidator::makeSimDigiPlotsRPC(const edm::Event& iEvent)
 
       //std::cout << " Reading the Roll"<<std::endl;
       const RPCRoll* rollasociated = rpcGeo->roll(rollId);
+      
 
       //std::cout << " Getting the Surface"<<std::endl;
       const BoundPlane & RPCSurface = rollasociated->surface();

@@ -248,26 +248,13 @@ Analyzer::Analyzer(const edm::ParameterSet& iConfig)
       calcSyst_(iConfig.getUntrackedParameter<bool>("CalcSystematics")),
       calibrateTOF_(iConfig.getUntrackedParameter<bool>("CalibrateTOF")),
       smearingTOF_(iConfig.getUntrackedParameter<bool>("SmearingTOF")),
-      fpixMassStrategy_(iConfig.getUntrackedParameter<bool>("FpixMassStrategy"))
-
- {
+      fpixMassStrategy_(iConfig.getUntrackedParameter<bool>("FpixMassStrategy")),
+      topoToken_(esConsumes<TrackerTopology, TrackerTopologyRcd>()),
+      tkGeometryToken_(esConsumes<TrackerGeometry, TrackerDigiGeometryRecord>()),
+      pixelCPEToken_(esConsumes<PixelClusterParameterEstimator, TkPixelCPERecord>()) {
 //now do what ever initialization is needed
 // define the selection to be considered later for the optimization
 // WARNING: recall that this has a huge impact on the analysis time AND on the output file size --> be carefull with your choice
-   
-  // TrackerTopology
-  edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> topoToken_ = 
-      esConsumes<TrackerTopology, TrackerTopologyRcd>();
-
-  // TrackerGeometry
-  edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> tkGeometryToken_ = 
-      esConsumes<TrackerGeometry, TrackerDigiGeometryRecord>();
-
-  // PixelClusterParameterEstimator (avec label si besoin, sinon "")
-  edm::ESGetToken<PixelClusterParameterEstimator, TkPixelCPERecord> pixelCPEToken_ = 
-      esConsumes<PixelClusterParameterEstimator, TkPixelCPERecord>(edm::ESInputTag{"", pixelCPE_});
-
-
 
   useClusterCleaning = true;
   if (typeMode_ == 4) {
@@ -2970,7 +2957,7 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
     //             hits, SF, templates, usePixel, useStrips,, useClusterCleaning, uneTrunc,
     //             mustBeInside, MaxStripNOM, correctFEDSat, XtalkInv, lowDeDxDrop, dedxErr, useTemplateLayer_, 
     //             skipPixelL1, skip_templates_ias, useMorrisMethod,
-    //             usePixelClusterCleaning,pixelCPE_,tTopo,track_px,track_py,track_pz,track_charge
+    //             usePixelClusterCleaning,pixelCPE_,tTopo,track_px,track_py,track_pz,track_charge, tkGeometryToken_, pixelCPEToken_
 
     //correction inverseXtalk = 0 --> take the raw amplitudes of the cluster
     //correction inverseXtalk = 1 --> modify the amplitudes based on xtalk for non-saturated cluster + correct for saturation
@@ -2986,14 +2973,14 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
     
     // Ih
     auto dedxMObj_FullTrackerTmp =
-        computedEdx(track->eta(),iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = true,  useStrip = true, useClusterCleaning, useTruncated = false,
+        computedEdx(track->eta(),iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = true,  useStrip = true, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, &dEdxErr, useTemplateLayer_,
                     false,0, false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
 //    reco::DeDxData* dedxMObj_FullTracker = dedxMObj_FullTrackerTmp.numberOfMeasurements() > 0 ? &dedxMObj_FullTrackerTmp : nullptr;
     
     // Ih Up
     auto dedxMUpObjTmp =
-        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
+        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.15, 0, useTemplateLayer_,
                     false,0, false, false, true,  pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
     reco::DeDxData* dedxMUpObj = dedxMUpObjTmp.numberOfMeasurements() > 0 ? &dedxMUpObjTmp : nullptr;
@@ -3002,14 +2989,14 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
     // For now it's a copy of Ih Up, I doubt that's what it should be...
     // Also I think this should be done on the top of Ih no pixel L1 not the full tracker version
     auto dedxMDownObjTmp =
-        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
+        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.15, 0, useTemplateLayer_,
                     false,0, false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
     reco::DeDxData* dedxMDownObj = dedxMDownObjTmp.numberOfMeasurements() > 0 ? &dedxMDownObjTmp : nullptr;
 
     // Ih no pixel L1 
     auto dedxIh_noL1_Tmp =
-        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
+        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, &dEdxErr, useTemplateLayer_, skipPixelL1 = true,
                     0, false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
     reco::DeDxData* dedxIh_noL1 = dedxIh_noL1_Tmp.numberOfMeasurements() > 0 ? &dedxIh_noL1_Tmp : nullptr;
@@ -3017,34 +3004,34 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
     // Ih 0.15 low values drop
     // Should useTruncated be true ?
     auto dedxIh_15drop_Tmp =
-      computedEdx(track->eta(),iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = true,
+      computedEdx(track->eta(),iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = true,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.15, &dEdxErr, useTemplateLayer_,
                     false,0, false, false, true,  pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
     reco::DeDxData* dedxIh_15drop = dedxIh_15drop_Tmp.numberOfMeasurements() > 0 ? &dedxIh_15drop_Tmp : nullptr;
     // Ih Strip only  =======>  THE GOLDEN VARIABLE (change applied on March 29, 2023):
     auto dedxIh_StripOnly_Tmp =
-    computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false,
+    computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, &dEdxErr, useTemplateLayer_,
                     false,0, false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
     reco::DeDxData* dedxIh_StripOnly = dedxIh_StripOnly_Tmp.numberOfMeasurements() > 0 ? &dedxIh_StripOnly_Tmp : nullptr;
     
     // Ih Strip only and 0.15 low values drop
     auto dedxIh_StripOnly_15drop_Tmp =
-      computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = false, useStrip = true, useClusterCleaning, useTruncated = true,
+      computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = false, useStrip = true, useClusterCleaning, useTruncated = true,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.15, &dEdxErr, useTemplateLayer_, skipPixelL1 = true,
                     0, false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
     reco::DeDxData* dedxIh_StripOnly_15drop = dedxIh_StripOnly_15drop_Tmp.numberOfMeasurements() > 0 ? &dedxIh_StripOnly_15drop_Tmp : nullptr;
     
     // Ih Pixel only no BPIXL1
     auto dedxIh_PixelOnly_noL1_Tmp =
-      computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false,
+      computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, &dEdxErr, useTemplateLayer_, skipPixelL1 = true,
                     0, false, false, true,  pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
     reco::DeDxData* dedxIh_PixelOnlyh_noL1 = dedxIh_PixelOnly_noL1_Tmp.numberOfMeasurements() > 0 ? &dedxIh_PixelOnly_noL1_Tmp : nullptr;
     
     // Ih correct saturation from fits
     auto dedxIh_SaturationCorrectionFromFits_Tmp =
-      computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false,
+      computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 2, dropLowerDeDxValue = 0.0, &dEdxErr, useTemplateLayer_, skipPixelL1 = true,
                     0, false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
     reco::DeDxData* dedxIh_SaturationCorrectionFromFits = dedxIh_SaturationCorrectionFromFits_Tmp.numberOfMeasurements() > 0 ? &dedxIh_SaturationCorrectionFromFits_Tmp : nullptr;
@@ -3071,51 +3058,51 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
     int NPV = vertexColl.size();
     if(!puTreatment_) {
         dedxIas_FullTrackerTmp =
-        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplates, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
+        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplates, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
                    mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_,
                    false,0, false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
         dedxIas_FullTracker = dedxIas_FullTrackerTmp.numberOfMeasurements() > 0 ? &dedxIas_FullTrackerTmp : nullptr;
 
         dedxIas_noL1Tmp =
-        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplates, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
+        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplates, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
                mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_,skipPixelL1 = true, skip_templates_ias = 2,
                    false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
         dedxIas_noL1 = dedxIas_noL1Tmp.numberOfMeasurements() > 0 ? &dedxIas_noL1Tmp : nullptr;
 
         dedxIas_noTIBnoTIDno3TEC_Tmp =
-        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplates, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
+        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplates, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = true, skip_templates_ias = 1,
                     false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
 
         dedxIas_noTIBnoTIDno3TEC = dedxIas_noTIBnoTIDno3TEC_Tmp.numberOfMeasurements() > 0 ? &dedxIas_noTIBnoTIDno3TEC_Tmp : nullptr;
 
         dedxIas_PixelOnly_Tmp =
-        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplates, usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false,
+        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplates, usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = false, skip_templates_ias = 2,
                     false, false, true,  pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
         dedxIas_PixelOnly = dedxIas_PixelOnly_Tmp.numberOfMeasurements() > 0 ? &dedxIas_PixelOnly_Tmp : nullptr;
 
         dedxIas_StripOnly_Tmp =
-        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplates, usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false,
+        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplates, usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = false, skip_templates_ias = 0,
                     false, false, true,  pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
         dedxIas_StripOnly = dedxIas_StripOnly_Tmp.numberOfMeasurements() > 0 ? &dedxIas_StripOnly_Tmp : nullptr;
 
         dedxIas_PixelOnly_noL1_Tmp =
-        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplates, usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false,
+        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplates, usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = true, skip_templates_ias = 2,
                     false, false, true,  pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
         dedxIas_PixelOnly_noL1 = dedxIas_PixelOnly_noL1_Tmp.numberOfMeasurements() > 0 ? &dedxIas_PixelOnly_noL1_Tmp : nullptr;
 
         dedxIs_StripOnly_Tmp =
-        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplates, usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false,
+        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplates, usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false,
                 mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = true, skip_templates_ias = 2, symmetricSmirnov = true,
                 false, true,  pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
         dedxIs_StripOnly = dedxIs_StripOnly_Tmp.numberOfMeasurements() > 0 ? &dedxIs_StripOnly_Tmp : nullptr;
       
       // the FiStrips variable
       dedxMorrisMethod_StripOnly_Tmp =
-      computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplates, usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false,
+      computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplates, usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false,
                   mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = false, skip_templates_ias = 0, 
                   symmetricSmirnov = false, useMorrisMethod = true, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
       dedxMorrisMethod_StripOnly = dedxMorrisMethod_StripOnly_Tmp.numberOfMeasurements() > 0 ? &dedxMorrisMethod_StripOnly_Tmp : nullptr;
@@ -3124,56 +3111,56 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
           if ( NPV > PuBins_[i] && NPV <= PuBins_[i+1] ){
             //globalIas_
             dedxIas_FullTrackerTmp =
-            computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_,
+            computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_,
                         false,0, false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
             dedxIas_FullTracker = dedxIas_FullTrackerTmp.numberOfMeasurements() > 0 ? &dedxIas_FullTrackerTmp : nullptr;
 
             //globalIas_ no BPIXL1
             dedxIas_noL1Tmp =
-            computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_,skipPixelL1 = true, skip_templates_ias = 2,
+            computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_,skipPixelL1 = true, skip_templates_ias = 2,
                          false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
             dedxIas_noL1 = dedxIas_noL1Tmp.numberOfMeasurements() > 0 ? &dedxIas_noL1Tmp : nullptr;
 
             //globalIas_ without TIB, TID, and 3 first TEC layers
             dedxIas_noTIBnoTIDno3TEC_Tmp =
-                computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = true, skip_templates_ias = 1,
+                computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = true, skip_templates_ias = 1,
                          false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
             dedxIas_noTIBnoTIDno3TEC = dedxIas_noTIBnoTIDno3TEC_Tmp.numberOfMeasurements() > 0 ? &dedxIas_noTIBnoTIDno3TEC_Tmp : nullptr;
 
             //globalIas_ Pixel only
             dedxIas_PixelOnly_Tmp =
-                computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = false, skip_templates_ias = 2,
+                computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = false, skip_templates_ias = 2,
                          false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
             dedxIas_PixelOnly = dedxIas_PixelOnly_Tmp.numberOfMeasurements() > 0 ? &dedxIas_PixelOnly_Tmp : nullptr;
 
             //globalIas_ Strip only
             dedxIas_StripOnly_Tmp =
-                computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = false, skip_templates_ias = 0,
+                computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = false, skip_templates_ias = 0,
                          false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
 
             dedxIas_StripOnly = dedxIas_StripOnly_Tmp.numberOfMeasurements() > 0 ? &dedxIas_StripOnly_Tmp : nullptr;
 
             //globalIas_ Strip only BUT using the Gstrip templates under the old saturation correction method and |eta|<2.4
             dedxIas_StripOnly_OldCorr_Tmp =
-                computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplatesPU_OldSatCorr[i], usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = false, skip_templates_ias = 0,
+                computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplatesPU_OldSatCorr[i], usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = false, skip_templates_ias = 0,
                          false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
             dedxIas_StripOnly_OldCorr = dedxIas_StripOnly_OldCorr_Tmp.numberOfMeasurements() > 0 ? &dedxIas_StripOnly_OldCorr_Tmp : nullptr;
 
             //globalIas_ Pixel only no BPIXL1
             dedxIas_PixelOnly_noL1_Tmp =
-                computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = true, skip_templates_ias = 2,
+                computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = true, skip_templates_ias = 2,
                          false, false, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
             dedxIas_PixelOnly_noL1 = dedxIas_PixelOnly_noL1_Tmp.numberOfMeasurements() > 0 ? &dedxIas_PixelOnly_noL1_Tmp : nullptr;
 
             //symmetric Smirnov discriminator - Is
             dedxIs_StripOnly_Tmp =
-            computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = true, skip_templates_ias = 2, symmetricSmirnov = true,
+            computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = true, useStrip = false, useClusterCleaning, useTruncated = false, mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = true, skip_templates_ias = 2, symmetricSmirnov = true,
                          false, true,  pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
             dedxIs_StripOnly = dedxIs_StripOnly_Tmp.numberOfMeasurements() > 0 ? &dedxIs_StripOnly_Tmp : nullptr;
           
             // the FiStrips variable
             dedxMorrisMethod_StripOnly_Tmp =
-            computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false,
+            computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = dEdxTemplatesPU[i], usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false,
                         mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, 0, useTemplateLayer_, skipPixelL1 = false, skip_templates_ias = 0, symmetricSmirnov = false, useMorrisMethod = true, true, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
             dedxMorrisMethod_StripOnly = dedxMorrisMethod_StripOnly_Tmp.numberOfMeasurements() > 0 ? &dedxMorrisMethod_StripOnly_Tmp : nullptr;
           }//end condition on vertex numbers
@@ -3989,7 +3976,7 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
 
     //check impact of no pixel cleaning 
     auto dedxIh_test_tmp3 =
-    computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
+    computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, &dEdxErr, useTemplateLayer_, skipPixelL1 = true,
                     0, false, false, false, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
     reco::DeDxData* dedxtest_nopixcl = dedxIh_test_tmp3.numberOfMeasurements() > 0 ? &dedxIh_test_tmp3 : nullptr;
@@ -4047,13 +4034,13 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
       if (doPostPreSplots_) {
         //check impact of no clustercleaning (in strip and in pix)
         auto dedxIh_test_tmp =
-        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, false, useTruncated = false,
+        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, false, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, &dEdxErr, useTemplateLayer_, skipPixelL1 = true,
                     0, false, false, false,  pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
         reco::DeDxData* dedxtest_noclean = dedxIh_test_tmp.numberOfMeasurements() > 0 ? &dedxIh_test_tmp : nullptr;
         //check impact of no clustercleaning and no condition of the cluster to be inside the module
         auto dedxIh_test_tmp2 =
-        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, false, useTruncated = false,
+        computedEdx(track->eta(), iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, false, useTruncated = false,
                     false, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, &dEdxErr, useTemplateLayer_, skipPixelL1 = true,
                     0, false, false, false, pixelCPE_, tTopo, track->px(), track->py(), track->pz(), track->charge());
         reco::DeDxData* dedxtest_noinside = dedxIh_test_tmp2.numberOfMeasurements() > 0 ? &dedxIh_test_tmp2 : nullptr;
@@ -4081,7 +4068,8 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
           modulgeomForIndxH = 15;
         } else {
           SiStripDetId SSdetId(detid);
-          modulgeomForIndxH = SSdetId.moduleGeometry();
+          SiStripModuleGeometry moduleGeom = SSdetId.moduleGeometry();
+          modulgeomForIndxH = static_cast<int>(moduleGeom);
         }
         pathlenghtForIndxH = dedxHits->pathlength(h) * 10;
         chargeForIndxH = dedxHits->charge(h);
@@ -7035,14 +7023,14 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
 
       // Ih no pixel L1
       auto dedxIh_noL1_TmpFromGeneralTrack =
-        computedEdx(generalTrack->eta(), iSetup,  run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
+        computedEdx(generalTrack->eta(), iSetup,  run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = true, useStrip = true, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, &dEdxErr, useTemplateLayer_, skipPixelL1 = true,
                     0, false, false, true, pixelCPE_, tTopo, generalTrack->px(), generalTrack->py(), generalTrack->pz(), generalTrack->charge());
       reco::DeDxData* dedxIh_noL1FromGeneralTrack = dedxIh_noL1_TmpFromGeneralTrack.numberOfMeasurements() > 0 ? &dedxIh_noL1_TmpFromGeneralTrack : nullptr;
 
       // Ih Strip only
       auto dedxIh_StripOnly_TmpFromGeneralTrack =
-        computedEdx(generalTrack->eta(),iSetup, run_number, year, dedxHits, dEdxSF, localdEdxTemplates = nullptr, usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false,
+        computedEdx(generalTrack->eta(),iSetup, run_number, year, dedxHits, dEdxSF, tkGeometryToken_, pixelCPEToken_, localdEdxTemplates = nullptr, usePixel = false, useStrip = true, useClusterCleaning, useTruncated = false,
                     mustBeInside, MaxStripNOM, correctFEDSat, crossTalkInvAlgo = 1, dropLowerDeDxValue = 0.0, &dEdxErr, useTemplateLayer_,
                     false, 0, false, false, true, pixelCPE_, tTopo, generalTrack->px(), generalTrack->py(), generalTrack->pz(), generalTrack->charge());
 

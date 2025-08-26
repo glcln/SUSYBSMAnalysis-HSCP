@@ -31,6 +31,12 @@
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/TrackReco/interface/DeDxData.h"
 #include "SimDataFormats/CaloHit/interface/PCaloHitContainer.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
+#include "FWCore/Framework/interface/Event.h"
+#include "FWCore/Framework/interface/EventSetup.h"
+#include "FWCore/Framework/interface/MakerMacros.h"
+
+
 
 
 //
@@ -54,7 +60,8 @@ class HSCPValidator : public edm::one::EDAnalyzer<edm::one::SharedResources> {
       void makeGenPlots(const edm::Event& iEvent);
       void makeSimTrackPlots(const edm::Event& iEvent);
       void makeSimDigiPlotsECAL(const edm::Event& iEvent);
-      void makeSimDigiPlotsRPC(const edm::Event& iEvent);
+      void makeSimDigiPlotsRPC(const edm::Event& iEvent, const RPCGeometry& rpcGeo)
+
       void makeHLTPlots(const edm::Event& iEvent);
       void makeRecoPlots(const edm::Event& iEvent);
       bool IncreasedTreshold(const trigger::TriggerEvent& trEv, const edm::InputTag& InputPath, double NewThreshold, double etaCut,int NObjectAboveThreshold, bool averageThreshold);

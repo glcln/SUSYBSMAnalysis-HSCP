@@ -39,6 +39,8 @@
 
 // ~~~~~~~~~ CMSSW include files ~~~~~~~~~
 
+
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 #include "DataFormats/Common/interface/View.h"
@@ -91,6 +93,7 @@
 #include "TrackingTools/PatternTools/interface/TrajTrackAssociation.h"
 
 #include "DataFormats/TrackerRecHit2D/interface/SiPixelRecHit.h"
+
 
 #include "DataFormats/METReco/interface/CaloMET.h"
 #include "DataFormats/METReco/interface/PFMET.h"

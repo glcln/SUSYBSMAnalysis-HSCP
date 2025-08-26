@@ -26,6 +26,7 @@
 using namespace reco;
 using namespace std;
 using namespace edm;
+using namespace siStripClusterTools;
 
 HSCPDeDxInfoProducer::HSCPDeDxInfoProducer(const edm::ParameterSet& iConfig)
 {
@@ -71,9 +72,7 @@ void  HSCPDeDxInfoProducer::beginRun(edm::Run const& run, const edm::EventSetup&
 {
    if(useCalibration && calibGains.size()==0){
       const TrackerGeometry& tkGeom = iSetup.getData(tkGeomToken_);
-      m_off = tkGeom->offsetDU(GeomDetEnumerators::PixelBarrel); //index start at the first pixel
-
-      DeDxTools::makeCalibrationMap(m_calibrationPath, *tkGeom, calibGains, m_off);
+      m_off = tkGeom.offsetDU(GeomDetEnumerators::PixelBarrel); //index start at the first pixel
    }
 
 //   DeDxTools::buildDiscrimMap(run, iSetup, Reccord,  ProbabilityMode, Prob_ChargePath);
@@ -161,9 +160,8 @@ void HSCPDeDxInfoProducer::processHit(const TrackingRecHit* recHit, float trackM
           if(!useStrip) return;
 
           auto& detUnit     = *(recHit->detUnit());
-          int   NSaturating = 0;
           float pathLen     = detUnit.surface().bounds().thickness()/fabs(cosine);
-          float chargeAbs   = DeDxTools::getCharge(&(clus.stripCluster()),NSaturating, detUnit, calibGains, m_off);
+          float chargeAbs = chargePerCM(detUnit.geographicalId(), clus.stripCluster());
           hscpDeDxInfo.charges.push_back(chargeAbs);
           hscpDeDxInfo.pathlengths.push_back(pathLen);
           hscpDeDxInfo.detIds.push_back(thit.geographicalId());
@@ -176,9 +174,8 @@ void HSCPDeDxInfoProducer::processHit(const TrackingRecHit* recHit, float trackM
           if(!matchedHit)return;
 
           auto& detUnitM     = *(matchedHit->monoHit().detUnit());
-          int   NSaturating = 0;
           float pathLen     = detUnitM.surface().bounds().thickness()/fabs(cosine);
-          float chargeAbs   = DeDxTools::getCharge(&(matchedHit->monoHit().stripCluster()),NSaturating, detUnitM, calibGains, m_off);
+          float chargeAbs = chargePerCM(detUnitM.geographicalId(), clus.stripCluster());
           hscpDeDxInfo.charges.push_back(chargeAbs);
           hscpDeDxInfo.pathlengths.push_back(pathLen);
           hscpDeDxInfo.detIds.push_back(thit.geographicalId());
@@ -188,9 +185,8 @@ void HSCPDeDxInfoProducer::processHit(const TrackingRecHit* recHit, float trackM
           hscpDeDxInfo.clusterIndices.push_back(monoClusterRef.key());
 
           auto& detUnitS     = *(matchedHit->stereoHit().detUnit());
-          NSaturating = 0;
           pathLen     = detUnitS.surface().bounds().thickness()/fabs(cosine);
-          chargeAbs   = DeDxTools::getCharge(&(matchedHit->stereoHit().stripCluster()),NSaturating, detUnitS, calibGains, m_off);
+          chargeAbs = chargePerCM(detUnitS.geographicalId(), clus.stripCluster());
           hscpDeDxInfo.charges.push_back(chargeAbs);
           hscpDeDxInfo.pathlengths.push_back(pathLen);
           hscpDeDxInfo.detIds.push_back(thit.geographicalId());

@@ -51,7 +51,6 @@
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/TrackReco/interface/DeDxData.h"
 #include "DataFormats/TrackReco/interface/DeDxHitInfo.h"
-#include "RecoTracker/DeDx/interface/DeDxTools.h"
 #include "DataFormats/DetId/interface/DetId.h"
 #include "DataFormats/TrackReco/interface/TrackToTrackMap.h"
 
@@ -176,7 +175,6 @@ class calib_ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        bool     tree_sclus_ismerged[nMaxDeDxH];
        bool     tree_sclus_sat254[nMaxDeDxH];
        bool     tree_sclus_sat255[nMaxDeDxH];
-       bool     tree_sclus_shape[nMaxDeDxH];
        int      tree_sclus_index_strip_corr[nMaxDeDxH];
        int      tree_sclus_nstrip_corr[nMaxDeDxH];
        float    tree_sclus_charge_corr[nMaxDeDxH];
@@ -263,7 +261,6 @@ calib_ntuple::calib_ntuple(const edm::ParameterSet& iConfig)
    smalltree -> Branch ( "sclus_nstrip",      tree_sclus_nstrip,     "sclus_nstrip[ndedxhits]/I"  );
    smalltree -> Branch ( "sclus_sat254",      tree_sclus_sat254,     "sclus_sat254[ndedxhits]/O" );
    smalltree -> Branch ( "sclus_sat255",      tree_sclus_sat255,     "sclus_sat255[ndedxhits]/O" );
-   smalltree -> Branch ( "sclus_shape",       tree_sclus_shape,      "sclus_shape[ndedxhits]/O" );
    smalltree -> Branch ( "sclus_index_strip_corr", tree_sclus_index_strip_corr,"sclus_index_strip_corr[ndedxhits]/I"  );
    smalltree -> Branch ( "sclus_nstrip_corr", tree_sclus_nstrip_corr,"sclus_nstrip_corr[ndedxhits]/I"  );
    smalltree -> Branch ( "sclus_charge_corr", tree_sclus_charge_corr,"sclus_charge_corr[ndedxhits]/F" );
@@ -489,7 +486,6 @@ void calib_ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
                tree_sclus_charge_corr[tree_dedxhits]=0;
                tree_sclus_sat254[tree_dedxhits]=false;
                tree_sclus_sat255[tree_dedxhits]=false;
-               tree_sclus_shape[tree_dedxhits] = ::SiStripClusterTools::shapeSelection(*(dedxHits->stripCluster(h)));
 
 
                std::vector<int> amps = convert(dedxHits->stripCluster(h)->amplitudes());
@@ -541,7 +537,6 @@ void calib_ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
                tree_sclus_nstrip[tree_dedxhits]=0;
                tree_sclus_sat254[tree_dedxhits]=0;
                tree_sclus_sat255[tree_dedxhits]=0;
-               tree_sclus_shape[tree_dedxhits]=0;
                tree_sclus_clusclean[tree_dedxhits]=0;
                tree_sclus_charge_corr[tree_dedxhits]=-1;
                tree_sclus_nstrip_corr[tree_dedxhits]=0;
