@@ -245,9 +245,6 @@ private:
   edm::EDGetTokenT<trigger::TriggerEvent> trigEventToken_ ;
   edm::EDGetTokenT<l1t::EtSumBxCollection> l1TriggerEtSumToken_;
 
-  edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> tkGeometryToken_;
-  edm::ESGetToken<PixelClusterParameterEstimator, TkPixelCPERecord> pixelCPEToken_;
-  edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> topoToken_;
 
   edm::EDGetTokenT<bool> primaryVertexFilterToken_;
   edm::EDGetTokenT<bool> globalSuperTightHalo2016FilterToken_;
@@ -493,6 +490,11 @@ private:
   const bool smearingTOF_;
   const bool fpixMassStrategy_;
   unsigned int trigInfo_;
+
+  
+  edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> topoToken_;
+  edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> tkGeometryToken_;
+  edm::ESGetToken<PixelClusterParameterEstimator, TkPixelCPERecord> pixelCPEToken_;
 
   static constexpr const char* const MOD = "Analyzer";
   int totMu22;

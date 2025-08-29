@@ -29,11 +29,14 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
+#include "Geometry/DTGeometry/interface/DTGeometry.h"
+#include "Geometry/Records/interface/MuonGeometryRecord.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include "DataFormats/MuonReco/interface/MuonTimeExtra.h"
 #include "SUSYBSMAnalysis/MuonTiming/interface/MuonTimingFiller_Mini.h"
+#include "FWCore/Framework/interface/stream/EDProducer.h"
 
 
 //
@@ -53,7 +56,6 @@ class MuonTimingProducer_Mini : public edm::stream::EDProducer<> {
       edm::EDGetTokenT<pat::MuonCollection> muonToken_;
 
       MuonTimingFiller_Mini* theTimingFiller_;
-
 };
 
 #endif

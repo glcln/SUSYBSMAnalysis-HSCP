@@ -36,26 +36,25 @@
 #include "Geometry/CSCGeometry/interface/CSCGeometry.h"
 #include "TrackingTools/Records/interface/TrackingComponentsRecord.h"
 #include "FWCore/Framework/interface/stream/EDProducer.h"
+#include "FWCore/Framework/interface/stream/EDProducer.h"
 
 
 #include <vector>
 #include <iostream>
 
 //                                                                                                                                                                                 
-// class decleration                                                                                                                                                               
+// class decleration                                                                                                                                                   
 //                                                                                                                                                                                 
-class MuonSegmentProducer : public edm::EDProducer {
+class MuonSegmentProducer : public edm::stream::EDProducer<> {
 public:
   explicit MuonSegmentProducer(const edm::ParameterSet&);
-  ~MuonSegmentProducer();
+  ~MuonSegmentProducer() override = default;
 
 private:
-  virtual void beginJob() ;
-  virtual void produce(edm::Event&, const edm::EventSetup&);
-  virtual void endJob() ;
+  void produce(edm::Event&, const edm::EventSetup&) override;
 
-  edm::EDGetTokenT< CSCSegmentCollection > m_cscSegmentToken;
-  edm::EDGetTokenT< DTRecSegment4DCollection > m_dtSegmentToken;
+  edm::EDGetTokenT<CSCSegmentCollection> m_cscSegmentToken;
+  edm::EDGetTokenT<DTRecSegment4DCollection> m_dtSegmentToken;
 
   edm::ESGetToken<DTGeometry, MuonGeometryRecord> dtGeomToken_;
   edm::ESGetToken<CSCGeometry, MuonGeometryRecord> cscGeomToken_;
@@ -63,25 +62,15 @@ private:
 
 using namespace susybsm;
 
-MuonSegmentProducer::MuonSegmentProducer(const edm::ParameterSet& iConfig) {
-  using namespace edm;
-  using namespace std;
-
-  m_cscSegmentToken = consumes< CSCSegmentCollection >( iConfig.getParameter<edm::InputTag>("CSCSegments" ) );
-  m_dtSegmentToken  = consumes< DTRecSegment4DCollection >(iConfig.getParameter<edm::InputTag>("DTSegments" ) );
-
-  dtGeomToken_ = esConsumes<DTGeometry, MuonGeometryRecord>();
-  cscGeomToken_ = esConsumes<CSCGeometry, MuonGeometryRecord>();
-
-  produces<susybsm::MuonSegmentCollection >();
+MuonSegmentProducer::MuonSegmentProducer(const edm::ParameterSet& iConfig) 
+  : m_cscSegmentToken(consumes<CSCSegmentCollection>(iConfig.getParameter<edm::InputTag>("CSCSegments"))),
+    m_dtSegmentToken(consumes<DTRecSegment4DCollection>(iConfig.getParameter<edm::InputTag>("DTSegments"))),
+    dtGeomToken_(esConsumes<DTGeometry, MuonGeometryRecord>()),
+    cscGeomToken_(esConsumes<CSCGeometry, MuonGeometryRecord>())
+{
+  produces<susybsm::MuonSegmentCollection>();
 }
 
-MuonSegmentProducer::~MuonSegmentProducer() {
-}
-
-//
-// member functions
-//
 
 // ------------ method called to produce the data  ------------
 void
@@ -126,16 +115,6 @@ MuonSegmentProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) 
   }
 
   edm::OrphanHandle<susybsm::MuonSegmentCollection> putHandleSeg = iEvent.put(std::move(resultSeg));
-}
-
-// ------------ method called once each job just before starting event loop  ------------
-void 
-MuonSegmentProducer::beginJob() {
-}
-
-// ------------ method called once each job just after ending the event loop  ------------
-void 
-MuonSegmentProducer::endJob() {
 }
 
 //define this as a plug-in

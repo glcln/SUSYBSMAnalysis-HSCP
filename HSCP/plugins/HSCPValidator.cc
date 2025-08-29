@@ -114,7 +114,8 @@ HSCPValidator::HSCPValidator(const edm::ParameterSet& iConfig) :
   simTrackToken_ (consumes<edm::SimTrackContainer>(iConfig.getParameter<edm::InputTag>("SimTrackCollection"))),
   EBDigiCollectionToken_ (consumes<EBDigiCollection>(iConfig.getParameter<edm::InputTag>("EBDigiCollection"))),
   EEDigiCollectionToken_ (consumes<EEDigiCollection>(iConfig.getParameter<edm::InputTag>("EEDigiCollection"))),
-  rpcGeoToken_ (esConsumes<RPCGeometry, MuonGeometryRecord>())
+  rpcGeoToken_ (esConsumes<RPCGeometry, MuonGeometryRecord>()),
+  rpcSimHitToken_(consumes<std::vector<PSimHit>>(edm::InputTag("g4SimHits", "MuonRPCHits")))
 {
   //now do what ever initialization is needed
   // GEN
@@ -684,8 +685,8 @@ void HSCPValidator::makeSimDigiPlotsRPC(const edm::Event& iEvent, const RPCGeome
   using namespace edm;
 
   //std::cout << " Getting the SimHits " <<std::endl;
-  std::vector<Handle<edm::PSimHitContainer> > theSimHitContainers;
-  iEvent.getManyByType(theSimHitContainers);
+  edm::Handle<std::vector<PSimHit>> theSimHitContainers;
+  iEvent.getByToken(rpcSimHitToken_, theSimHitContainers);
   //std::cout << " The Number of sim Hits is  " << theSimHitContainers.size() <<std::endl;
 
   Handle<RPCRecHitCollection> rpcRecHits;
@@ -694,9 +695,9 @@ void HSCPValidator::makeSimDigiPlotsRPC(const edm::Event& iEvent, const RPCGeome
   //SimTrack Stuff
   std::vector<PSimHit> theSimHits;
 
-  for (int i = 0; i < int(theSimHitContainers.size()); i++){
-    theSimHits.insert(theSimHits.end(),theSimHitContainers.at(i)->begin(),theSimHitContainers.at(i)->end());
-  }
+  theSimHits.insert(theSimHits.end(),
+                  theSimHitContainers->begin(),
+                  theSimHitContainers->end());
 
 
   for (std::vector<PSimHit>::const_iterator iHit = theSimHits.begin(); iHit != theSimHits.end(); iHit++){
@@ -715,7 +716,7 @@ void HSCPValidator::makeSimDigiPlotsRPC(const edm::Event& iEvent, const RPCGeome
       RPCGeomServ rpcsrv(rollId);
 
       //std::cout << " Reading the Roll"<<std::endl;
-      const RPCRoll* rollasociated = rpcGeo->roll(rollId);
+      const RPCRoll* rollasociated = rpcGeo.roll(rollId);
       
 
       //std::cout << " Getting the Surface"<<std::endl;

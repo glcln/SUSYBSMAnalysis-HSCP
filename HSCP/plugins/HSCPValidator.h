@@ -35,8 +35,7 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-
-
+#include "SimDataFormats/TrackingHit/interface/PSimHit.h"
 
 
 //
@@ -60,7 +59,7 @@ class HSCPValidator : public edm::one::EDAnalyzer<edm::one::SharedResources> {
       void makeGenPlots(const edm::Event& iEvent);
       void makeSimTrackPlots(const edm::Event& iEvent);
       void makeSimDigiPlotsECAL(const edm::Event& iEvent);
-      void makeSimDigiPlotsRPC(const edm::Event& iEvent, const RPCGeometry& rpcGeo)
+      void makeSimDigiPlotsRPC(const edm::Event& iEvent, const RPCGeometry& rpcGeo);
 
       void makeHLTPlots(const edm::Event& iEvent);
       void makeRecoPlots(const edm::Event& iEvent);
@@ -111,6 +110,7 @@ class HSCPValidator : public edm::one::EDAnalyzer<edm::one::SharedResources> {
       edm::EDGetTokenT<EBDigiCollection> EBDigiCollectionToken_;
       edm::EDGetTokenT<EEDigiCollection> EEDigiCollectionToken_;
       edm::ESGetToken<RPCGeometry, MuonGeometryRecord> rpcGeoToken_;
+      edm::EDGetTokenT<std::vector<PSimHit>> rpcSimHitToken_;
 
       // ECAL
       TH1F* simHitsEcalEnergyHistEB_;

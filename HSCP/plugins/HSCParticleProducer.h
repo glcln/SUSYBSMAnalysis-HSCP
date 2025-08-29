@@ -26,6 +26,8 @@
 #include "FWCore/ServiceRegistry/interface/Service.h"
 
 #include "CommonTools/UtilAlgos/interface/DeltaR.h"
+#include "FWCore/Framework/interface/one/EDFilter.h"
+
 
 
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
@@ -49,15 +51,15 @@
 //
 // class decleration
 //
-class HSCParticleProducer : public edm::EDFilter {
+class HSCParticleProducer : public edm::one::EDFilter<edm::one::SharedResources> {
   public:
     explicit HSCParticleProducer(const edm::ParameterSet&);
     ~HSCParticleProducer();
 
   private:
-    virtual void beginJob() ;
-    virtual bool filter(edm::Event&, const edm::EventSetup&);
-    virtual void endJob() ;
+    virtual void beginJob() override;
+    virtual bool filter(edm::Event&, const edm::EventSetup&) override;
+    virtual void endJob() override;
 
     std::vector<susybsm::HSCParticle> getHSCPSeedCollection(edm::Handle<reco::TrackCollection>& trackCollectionHandle,  edm::Handle<reco::MuonCollection>& muonCollectionHandle, edm::Handle<reco::MuonCollection>& MTmuonCollectionHandle);
 

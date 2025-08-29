@@ -1,3 +1,0 @@
-scram b -j
-#cmsRun HSCParticleProducerAnalyzer_2018_mc_woProbQ_cfg_SingleEvent.py
-cmsRun HSCParticleProducerAnalyzer_2018_SignalMC_woProbQ_cfg.py

@@ -87,6 +87,7 @@
 #include "DataFormats/MuonReco/interface/MuonTimeExtraMap.h"
 
 #include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCParticle.h"
+#include "FWCore/Framework/interface/stream/EDFilter.h"
 
 
 #include "TFile.h"
@@ -112,16 +113,16 @@ using namespace __gnu_cxx;
 #define MAX_GENS     10000
 #define MAX_ECALCRYS 10
 
-class HSCPTreeBuilder : public edm::EDFilter {
+class HSCPTreeBuilder : public edm::stream::EDFilter<> {
 	public:
 		explicit HSCPTreeBuilder(const edm::ParameterSet&);
 		~HSCPTreeBuilder();
 
 
 	private:
-		virtual void beginJob() override ;
-		virtual bool filter(edm::Event&, const edm::EventSetup&) override;
-		virtual void endJob() override ;
+		void beginJob();
+		bool filter(edm::Event&, const edm::EventSetup&) override;
+		void endJob();
                 int ClosestMuonIndex(reco::TrackRef track, std::vector<reco::MuonRef>);
 
 		const edm::EventSetup* iSetup_;
@@ -421,8 +422,7 @@ HSCPTreeBuilder::beginJob()
 
 }
 
-void
-HSCPTreeBuilder::endJob()
+void HSCPTreeBuilder::endJob()
 {
 }
 
@@ -502,7 +502,7 @@ HSCPTreeBuilder::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
        Hscp_hasCalo         [NHSCPs] = hscp.hasCaloInfo();
        Hscp_type            [NHSCPs] = hscp.type();
 
-      if(track.isNonnull() && Hscp_hasTrack){
+      if(track.isNonnull() && Hscp_hasTrack[NHSCPs]){
          Track_p            [NHSCPs] = track->p();
          Track_pt           [NHSCPs] = track->pt();
          Track_pt_err       [NHSCPs] = track->ptError();
@@ -538,7 +538,7 @@ HSCPTreeBuilder::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
 */
       }
 
-      if(muon.isNonnull() && Hscp_hasMuon){
+      if(muon.isNonnull() && Hscp_hasMuon[NHSCPs]){
          Muon_p             [NHSCPs] = muon->p();
          Muon_pt            [NHSCPs] = muon->pt();
          Muon_eta           [NHSCPs] = muon->eta();
@@ -592,7 +592,7 @@ HSCPTreeBuilder::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
 */
       }
 
-      if(Hscp_hasRpc){
+      if(Hscp_hasRpc[NHSCPs]){
          Rpc_beta           [NHSCPs] = hscp.rpc().beta;
       }
 

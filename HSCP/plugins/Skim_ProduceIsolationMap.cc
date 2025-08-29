@@ -57,6 +57,12 @@
 #include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCPIsolation.h"
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/Math/interface/deltaR.h"
+#include "FWCore/Framework/interface/one/EDProducer.h"
+
+#include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
+#include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
+#include "TrackingTools/Records/interface/TransientTrackRecord.h"
 #include <iostream>
 
 //
@@ -66,14 +72,15 @@
 using namespace susybsm;
 using namespace edm;
 
-class ProduceIsolationMap : public edm::EDProducer {
+class ProduceIsolationMap : public edm::one::EDProducer<edm::one::SharedResources> {
    public:
       explicit ProduceIsolationMap(const edm::ParameterSet&);
-      ~ProduceIsolationMap();
+      ~ProduceIsolationMap() override = default;
       virtual void produce(edm::Event&, const edm::EventSetup&) override;
    private:
       edm::EDGetTokenT<reco::TrackCollection> TKToken_;
       edm::EDGetTokenT<reco::TrackCollection> inputCollectionToken_;
+      edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> ttBuilderToken_;
       std::vector<double>  TKIsolationPtcut_;
       std::vector<double>  IsolationConeDR_;
       std::vector<std::string>  Label_;
@@ -84,21 +91,13 @@ class ProduceIsolationMap : public edm::EDProducer {
 };
 
 //
-// constants, enums and typedefs
-//
-
-
-//
-// static data member definitions
-//
-
-//
 // constructors and destructor
 //
 ProduceIsolationMap::ProduceIsolationMap(const edm::ParameterSet& iConfig)
 {
    TKToken_          = consumes<reco::TrackCollection>(iConfig.getParameter< edm::InputTag > ("TKLabel"));
    inputCollectionToken_  = consumes<reco::TrackCollection>(iConfig.getParameter< edm::InputTag > ("inputCollection"));
+   ttBuilderToken_ = esConsumes<TransientTrackBuilder, TransientTrackRecord>(edm::ESInputTag("", "TransientTrackBuilder"));
    TKIsolationPtcut_ = iConfig.getParameter< std::vector<double> >        ("TkIsolationPtCut");
    IsolationConeDR_  = iConfig.getParameter< std::vector<double> >        ("IsolationConeDR");
    Label_            = iConfig.getParameter< std::vector<std::string> >   ("Label");
@@ -121,18 +120,14 @@ ProduceIsolationMap::ProduceIsolationMap(const edm::ParameterSet& iConfig)
    }
 }
 
-
-ProduceIsolationMap::~ProduceIsolationMap()
-{
-}
-
-void
-ProduceIsolationMap::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
+void ProduceIsolationMap::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
    using namespace edm;
    using namespace std;
 
    using reco::TrackCollection;
+
+   auto const& theTTB = iSetup.getData(ttBuilderToken_);
 
    Handle<TrackCollection> TKHandle;
    iEvent.getByToken(TKToken_,TKHandle);
@@ -151,11 +146,17 @@ ProduceIsolationMap::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
       std::vector<double> CountHighPt;for(unsigned int i=0;i<Label_.size();i++){CountHighPt.push_back(0);}
 
       if(itTrack->pt()>=candMinPt_){
-         TrackDetMatchInfo info = trackAssociator_.associate(iEvent, iSetup, trackAssociator_.getFreeTrajectoryState(iSetup, *itTrack), parameters_);
+         reco::TransientTrack ttrack = theTTB.build(*itTrack);
+
+         const FreeTrajectoryState& fts = ttrack.impactPointTSCP().theState();
+         TrackDetMatchInfo info = trackAssociator_.associate(iEvent, iSetup, fts, parameters_);
+
          for(unsigned int i=0;i<Label_.size();i++){
-            if(info.ecalRecHits.size()>0){IsolationInfoColl[i][TkIndex].Set_ECAL_Energy(info.coneEnergy(IsolationConeDR_[i], TrackDetMatchInfo::EcalRecHits));}
-            if(info.hcalRecHits.size()>0){IsolationInfoColl[i][TkIndex].Set_HCAL_Energy(info.coneEnergy(IsolationConeDR_[i], TrackDetMatchInfo::HcalRecHits));}
-         }
+            if(info.ecalRecHits.size()>0)
+                IsolationInfoColl[i][TkIndex].Set_ECAL_Energy(info.coneEnergy(IsolationConeDR_[i], TrackDetMatchInfo::EcalRecHits));
+            if(info.hcalRecHits.size()>0)
+                IsolationInfoColl[i][TkIndex].Set_HCAL_Energy(info.coneEnergy(IsolationConeDR_[i], TrackDetMatchInfo::HcalRecHits));
+        }
         
          for(TrackCollection::const_iterator itTrack2 = TKHandle->begin(); itTrack2 != TKHandle->end(); ++itTrack2){
             if(fabs(itTrack->pt()-itTrack2->pt())<0.1 && fabs(itTrack->eta()-itTrack2->eta())<0.05)continue;

@@ -41,6 +41,7 @@
 #include "DataFormats/PatCandidates/interface/IsolatedTrack.h"
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/PatCandidates/interface/PFIsolation.h"
+#include "RecoTracker/DeDx/interface/DeDxTools.h"
 
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/TrackReco/interface/DeDxData.h"
@@ -55,8 +56,10 @@
 #include "DataFormats/MuonReco/interface/MuonSelectors.h"
 
 
+
 #include "SimDataFormats/TrackerDigiSimLink/interface/StripDigiSimLink.h"
 #include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
+#include "DataFormats/SiStripCluster/interface/SiStripCluster.h"
 //#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/SiStripDetId/interface/SiStripDetId.h"
@@ -86,7 +89,6 @@
 #include "DataFormats/JetReco/interface/PFJetCollection.h"
 
 #include "DataFormats/PatCandidates/interface/MHT.h"
-#include "SimDataFormats/CrossingFrame/interface/CrossingFrame.h"
 #include "SimDataFormats/TrackingHit/interface/PSimHit.h"
 
 // new from Tamas
@@ -184,8 +186,9 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        int printOut_;
 //       edm::InputTag trackTags_; //used to select what tracks to read from configuration file
 //
-       std::vector< edm::EDGetTokenT<CrossingFrame<PSimHit> > > cfTokens_;
-       std::vector< edm::EDGetTokenT<std::vector<PSimHit> > > simHitTokens_;
+
+       std::vector<edm::EDGetTokenT<edm::PSimHitContainer>> cfTokens_;
+       std::vector<edm::EDGetTokenT<edm::PSimHitContainer>>  simHitTokens_;
        typedef std::pair<unsigned int, unsigned int> simHitCollectionID;
        typedef std::pair<simHitCollectionID, unsigned int> simhitAddr;
        typedef std::map<simHitCollectionID, std::vector<PSimHit> > simhit_collectionMap;
@@ -316,7 +319,7 @@ class ntuple : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
        bool     tree_sclus_ismerged[nMaxDeDxH];
        bool     tree_sclus_sat254[nMaxDeDxH];
        bool     tree_sclus_sat255[nMaxDeDxH];
-       bool     tree_sclus_shape[nMaxDeDxH];
+       //bool     tree_sclus_shape[nMaxDeDxH];
        int      tree_sclus_index_strip_corr[nMaxDeDxH];
        int      tree_sclus_nstrip_corr[nMaxDeDxH];
        float    tree_sclus_charge_corr[nMaxDeDxH];
@@ -466,8 +469,8 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
    cfTokens_.reserve(trackerContainers.size());
    simHitTokens_.reserve(trackerContainers.size());
    for(auto const& trackerContainer : trackerContainers) {
-      cfTokens_.push_back(consumes<CrossingFrame<PSimHit> >(edm::InputTag("mix", trackerContainer)));
-      simHitTokens_.push_back(consumes<std::vector<PSimHit> >(edm::InputTag("g4SimHits", trackerContainer)));
+     cfTokens_.push_back(consumes<edm::PSimHitContainer>(edm::InputTag("mix", trackerContainer)));
+     simHitTokens_.push_back(consumes<edm::PSimHitContainer>(edm::InputTag("g4SimHits", trackerContainer)));
    }
    genParticlesToken_ = consumes< std::vector<reco::GenParticle> >(iConfig.getParameter<edm::InputTag>("GenPart"));
 //   dEdxTrackToken_ = consumes<edm::ValueMap<reco::DeDxData> >(edm::InputTag("dedxHarmonic2"));
@@ -620,7 +623,7 @@ ntuple::ntuple(const edm::ParameterSet& iConfig)
    smalltree -> Branch ( "sclus_nstrip",      tree_sclus_nstrip,     "sclus_nstrip[ndedxhits]/I"  );
    smalltree -> Branch ( "sclus_sat254",      tree_sclus_sat254,     "sclus_sat254[ndedxhits]/O" );
    smalltree -> Branch ( "sclus_sat255",      tree_sclus_sat255,     "sclus_sat255[ndedxhits]/O" );
-   smalltree -> Branch ( "sclus_shape",       tree_sclus_shape,      "sclus_shape[ndedxhits]/O" );
+   //smalltree -> Branch ( "sclus_shape",       tree_sclus_shape,      "sclus_shape[ndedxhits]/O" );
    smalltree -> Branch ( "sclus_index_strip_corr", tree_sclus_index_strip_corr,"sclus_index_strip_corr[ndedxhits]/I"  );
    smalltree -> Branch ( "sclus_nstrip_corr", tree_sclus_nstrip_corr,"sclus_nstrip_corr[ndedxhits]/I"  );
    smalltree -> Branch ( "sclus_charge_corr", tree_sclus_charge_corr,"sclus_charge_corr[ndedxhits]/F" );
@@ -1014,52 +1017,36 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     iEvent.getByToken(m_stripSimLink, stripdigisimlink);
 
     SimHitCollMap_.clear();
-    for(auto const& cfToken : cfTokens_) {
-      edm::Handle<CrossingFrame<PSimHit> > cf_simhit;
+    for (auto const& cfToken : cfTokens_) {
+      edm::Handle<edm::PSimHitContainer> simHits;
       int Nhits = 0;
-      if (iEvent.getByToken(cfToken, cf_simhit)) {
-      std::unique_ptr<MixCollection<PSimHit> > thisContainerHits(new MixCollection<PSimHit>(cf_simhit.product()));
-      for (auto const& isim : *thisContainerHits) {
-        DetId theDet(isim.detUnitId());
+      if (iEvent.getByToken(cfToken, simHits)) {
         edm::EDConsumerBase::Labels labels;
         iEvent.labelsForToken(cfToken, labels);
         std::string trackerContainer(labels.productInstance);
-        if (printOut_ && Nhits==0) std::cout << "  trackerContainer " << trackerContainer << std::endl;
-        unsigned int tofBin = StripDigiSimLink::LowTof;
-        if (trackerContainer.find(std::string("HighTof")) != std::string::npos) tofBin = StripDigiSimLink::HighTof;
-        simHitCollectionID theSimHitCollID = std::make_pair(theDet.subdetId(), tofBin);
-        SimHitCollMap_[theSimHitCollID].push_back(isim);
-        ++Nhits;
-       }
-       if (printOut_ > 0) std::cout << "simHits from crossing frames; map size = " << SimHitCollMap_.size()
-                                   << ", Hit count = " << Nhits << ", " << sizeof(SimHitCollMap_)
-                                   << " bytes" << std::endl;
-       }
-    }
 
+        for (auto const& isim : *simHits) {
+          DetId theDet(isim.detUnitId());
 
-    for(auto const& simHitToken : simHitTokens_) {
-     edm::Handle<std::vector<PSimHit> > simHits;
-     int Nhits = 0;
-     if(iEvent.getByToken(simHitToken, simHits)) {
-      for (auto const& isim : *simHits) {
-        DetId theDet(isim.detUnitId());
-        edm::EDConsumerBase::Labels labels;
-        iEvent.labelsForToken(simHitToken, labels);
-        std::string trackerContainer(labels.productInstance);
-        if (printOut_>0 && Nhits==0) std::cout << "  trackerContainer " << trackerContainer << std::endl;
-        unsigned int tofBin = StripDigiSimLink::LowTof;
-        if (trackerContainer.find(std::string("HighTof")) != std::string::npos) tofBin = StripDigiSimLink::HighTof;
-        simHitCollectionID theSimHitCollID = std::make_pair(theDet.subdetId(), tofBin);
-        SimHitCollMap_[theSimHitCollID].push_back(isim);
-        ++Nhits;
+          if (printOut_ && Nhits == 0)
+            std::cout << "  trackerContainer " << trackerContainer << std::endl;
+
+          unsigned int tofBin = StripDigiSimLink::LowTof;
+          if (trackerContainer.find("HighTof") != std::string::npos)
+            tofBin = StripDigiSimLink::HighTof;
+
+          simHitCollectionID theSimHitCollID = std::make_pair(theDet.subdetId(), tofBin);
+          SimHitCollMap_[theSimHitCollID].push_back(isim);
+          ++Nhits;
+        }
+
+        if (printOut_ > 0)
+          std::cout << "simHits map size = " << SimHitCollMap_.size()
+                    << ", Hit count = " << Nhits
+                    << ", " << sizeof(SimHitCollMap_)
+                    << " bytes" << std::endl;
       }
-      if (printOut_ > 0) std::cout << "simHits from hard-scatter collection; map size = " << SimHitCollMap_.size()
-                                   << ", Hit count = " << Nhits << ", " << sizeof(SimHitCollMap_)
-                                   << " bytes" << std::endl;
-     }
     }
-
 
     // inspired by SUSYBSMAnalysis-HSCP/plugins/HSCPValidator.cc
     
@@ -1494,7 +1481,7 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                tree_sclus_eloss[tree_dedxhits]=0;
                tree_sclus_sat254[tree_dedxhits]=0;
                tree_sclus_sat255[tree_dedxhits]=0;
-               tree_sclus_shape[tree_dedxhits]=0;
+               //tree_sclus_shape[tree_dedxhits]=0;
                tree_sclus_clusclean[tree_dedxhits]=0;
                tree_sclus_charge_corr[tree_dedxhits]=-1;
                tree_sclus_nstrip_corr[tree_dedxhits]=0;
@@ -1514,10 +1501,10 @@ ntuple::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                tree_sclus_charge_corr[tree_dedxhits]=0;
                tree_sclus_sat254[tree_dedxhits]=false;
                tree_sclus_sat255[tree_dedxhits]=false;
-               tree_sclus_shape[tree_dedxhits]=DeDxTools::shapeSelection(*(dedxHits->stripCluster(h)));
+               //tree_sclus_shape[tree_dedxhits]=DeDxTools::shapeSelection(*(dedxHits->stripCluster(h)));
 
-               std::vector <uint8_t> amplis = dedxHits->stripCluster(h)->amplitudes();
-               std::vector <int> amps = convert(amplis);
+               const SiStripCluster* amplis = dedxHits->stripCluster(h);
+               std::vector<int> amps = convert(amplis->amplitudes());
                if (printOut_ > 0) std::cout << " amps.size() "<< amps.size() << std::endl;
 
 
