@@ -65,7 +65,8 @@ class MuonServiceProxy;
 //
 // constructors and destructor
 //
-CSCTimingExtractor_Mini::CSCTimingExtractor_Mini(const edm::ParameterSet& iConfig, MuonSegmentMatcher *segMatcher)
+
+CSCTimingExtractor_Mini::CSCTimingExtractor_Mini(const edm::ParameterSet& iConfig, MuonSegmentMatcher *segMatcher, edm::ConsumesCollector& iC)
   :
   thePruneCut_(iConfig.getParameter<double>("PruneCut")),
   theStripTimeOffset_(iConfig.getParameter<double>("CSCStripTimeOffset")),
@@ -77,9 +78,14 @@ CSCTimingExtractor_Mini::CSCTimingExtractor_Mini(const edm::ParameterSet& iConfi
   debug(iConfig.getParameter<bool>("debug"))
 {
   edm::ParameterSet serviceParameters = iConfig.getParameter<edm::ParameterSet>("ServiceParameters");
-  theService = std::make_unique<MuonServiceProxy>(serviceParameters);
+  theService = std::make_unique<MuonServiceProxy>(
+    iConfig.getParameter<edm::ParameterSet>("ServiceParameters"),
+    std::move(iC),
+    MuonServiceProxy::UseEventSetupIn::Event // ou :Run si tu veux qu’il soit lu au beginRun
+  );
   theMatcher = segMatcher;
-  propagatorToken_ = esConsumes<Propagator, TrackingComponentsRecord>(edm::ESInputTag{"", "SteppingHelixPropagatorAny"});
+  propagatorToken_ = iC.esConsumes<Propagator, TrackingComponentsRecord>(
+      edm::ESInputTag("", "SteppingHelixPropagatorAny"));
 }
 
 

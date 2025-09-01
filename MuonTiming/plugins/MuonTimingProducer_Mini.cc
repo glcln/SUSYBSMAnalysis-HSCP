@@ -40,8 +40,7 @@
 //
 // constructors and destructor
 //
-MuonTimingProducer_Mini::MuonTimingProducer_Mini(const edm::ParameterSet& iConfig)
-{
+MuonTimingProducer_Mini::MuonTimingProducer_Mini(const edm::ParameterSet& iConfig): iC_(consumesCollector()) {
    produces<reco::MuonTimeExtraMap>("combined");
    produces<reco::MuonTimeExtraMap>("dt");
    produces<reco::MuonTimeExtraMap>("csc");
@@ -50,7 +49,7 @@ MuonTimingProducer_Mini::MuonTimingProducer_Mini(const edm::ParameterSet& iConfi
    muonToken_ = consumes<pat::MuonCollection>(m_muonCollection);
    // Load parameters for the TimingFiller
    edm::ParameterSet fillerParameters = iConfig.getParameter<edm::ParameterSet>("TimingFillerParameters");
-   theTimingFiller_ = new MuonTimingFiller_Mini(fillerParameters,consumesCollector());
+   theTimingFiller_ = new MuonTimingFiller_Mini(fillerParameters, iC_);
 }
 
 

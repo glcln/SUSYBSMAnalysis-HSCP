@@ -53,13 +53,10 @@ class MuonServiceProxy;
 
 class CSCTimingExtractor_Mini {
 
-public:
-  
-  /// Constructor
-  CSCTimingExtractor_Mini(const edm::ParameterSet&, MuonSegmentMatcher *segMatcher);
-  
-  /// Destructor
-  ~CSCTimingExtractor_Mini();
+  public:
+    CSCTimingExtractor_Mini(const edm::ParameterSet&, MuonSegmentMatcher*, edm::ConsumesCollector&);
+
+    ~CSCTimingExtractor_Mini();
 
  class TimeMeasurement
   {

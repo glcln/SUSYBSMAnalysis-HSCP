@@ -41,7 +41,7 @@
 
 class MuonTimingFiller_Mini {
    public:
-      MuonTimingFiller_Mini(const edm::ParameterSet&, edm::ConsumesCollector&& iC);
+      MuonTimingFiller_Mini(const edm::ParameterSet&, edm::ConsumesCollector& iC);
       ~MuonTimingFiller_Mini();
       void fillTiming( const pat::Muon& muon, reco::MuonTimeExtra& dtTime, 
                     reco::MuonTimeExtra& cscTime, reco::MuonTime& rpcTime, 

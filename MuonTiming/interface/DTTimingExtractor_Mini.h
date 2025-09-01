@@ -41,6 +41,12 @@
 #include "DataFormats/TrackReco/interface/TrackExtra.h"
 #include "DataFormats/TrackReco/interface/TrackExtraFwd.h"
 
+#include "Geometry/CSCGeometry/interface/CSCGeometry.h"
+#include "Geometry/Records/interface/MuonGeometryRecord.h"
+#include "TrackingTools/Records/interface/TrackingComponentsRecord.h"
+#include "TrackingTools/GeomPropagators/interface/Propagator.h"
+#include "Geometry/DTGeometry/interface/DTGeometry.h"
+
 #include <vector>
 
 namespace edm {
@@ -56,7 +62,7 @@ class DTTimingExtractor_Mini {
 public:
   
   /// Constructor
-  DTTimingExtractor_Mini(const edm::ParameterSet&, MuonSegmentMatcher *segMatcher);
+  DTTimingExtractor_Mini(const edm::ParameterSet&, MuonSegmentMatcher *segMatcher, edm::ConsumesCollector& iC);
   
   /// Destructor
   ~DTTimingExtractor_Mini();

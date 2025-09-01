@@ -40,7 +40,7 @@
 //
 // constructors and destructor
 //
-MuonTimingFiller_Mini::MuonTimingFiller_Mini(const edm::ParameterSet& iConfig, edm::ConsumesCollector&& iC)
+MuonTimingFiller_Mini::MuonTimingFiller_Mini(const edm::ParameterSet& iConfig, edm::ConsumesCollector& iC)
 {
    // Load parameters for the DTTimingExtractor_Mini
    edm::ParameterSet dtTimingParameters = iConfig.getParameter<edm::ParameterSet>("DTTimingParameters");
@@ -56,8 +56,8 @@ MuonTimingFiller_Mini::MuonTimingFiller_Mini(const edm::ParameterSet& iConfig, e
        matchParameters = dtTimingParameters.getParameter<edm::ParameterSet>("MatchParameters");
    
    theMatcher_ = std::make_unique<MuonSegmentMatcher>(matchParameters, iC);
-   theDTTimingExtractor_Mini_ = std::make_unique<DTTimingExtractor_Mini>(dtTimingParameters,theMatcher_.get());
-   theCSCTimingExtractor_Mini_ = std::make_unique<CSCTimingExtractor_Mini>(cscTimingParameters,theMatcher_.get());
+   theDTTimingExtractor_Mini_ = std::make_unique<DTTimingExtractor_Mini>(dtTimingParameters,theMatcher_.get(),iC);
+   theCSCTimingExtractor_Mini_ = std::make_unique<CSCTimingExtractor_Mini>(cscTimingParameters,theMatcher_.get(),iC);
    
    errorEB_ = iConfig.getParameter<double>("ErrorEB");
    errorEE_ = iConfig.getParameter<double>("ErrorEE");

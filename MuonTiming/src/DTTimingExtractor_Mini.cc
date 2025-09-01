@@ -71,8 +71,8 @@ class MuonServiceProxy;
 //
 // constructors and destructor
 //
-DTTimingExtractor_Mini::DTTimingExtractor_Mini(const edm::ParameterSet& iConfig, MuonSegmentMatcher *segMatcher)
-  :
+DTTimingExtractor_Mini::DTTimingExtractor_Mini(const edm::ParameterSet& iConfig, MuonSegmentMatcher *segMatcher, edm::ConsumesCollector& iC)
+  :                                       
   theHitsMin_(iConfig.getParameter<int>("HitsMin")),
   thePruneCut_(iConfig.getParameter<double>("PruneCut")),
   theTimeOffset_(iConfig.getParameter<double>("DTTimeOffset")),
@@ -84,11 +84,14 @@ DTTimingExtractor_Mini::DTTimingExtractor_Mini(const edm::ParameterSet& iConfig,
   debug(iConfig.getParameter<bool>("debug"))
 {
   edm::ParameterSet serviceParameters = iConfig.getParameter<edm::ParameterSet>("ServiceParameters");
-  theService = std::make_unique<MuonServiceProxy>(serviceParameters);
+  theService = std::make_unique<MuonServiceProxy>(
+    iConfig.getParameter<edm::ParameterSet>("ServiceParameters"),
+    std::move(iC),
+    MuonServiceProxy::UseEventSetupIn::Event // ou :Run si tu veux qu’il soit lu au beginRun
+  );
   theMatcher = segMatcher;
 
-  dtGeomToken_ = esConsumes<DTGeometry, MuonGeometryRecord>();
-  propagatorToken_ = esConsumes<Propagator, TrackingComponentsRecord>(edm::ESInputTag("", "SteppingHelixPropagatorAny"));
+  propagatorToken_ = iC.esConsumes<Propagator, TrackingComponentsRecord>(edm::ESInputTag("", "SteppingHelixPropagatorAny"));
 }
 
 
