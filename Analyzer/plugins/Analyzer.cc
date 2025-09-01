@@ -251,7 +251,7 @@ Analyzer::Analyzer(const edm::ParameterSet& iConfig)
       fpixMassStrategy_(iConfig.getUntrackedParameter<bool>("FpixMassStrategy")),
       topoToken_(esConsumes<TrackerTopology, TrackerTopologyRcd>()),
       tkGeometryToken_(esConsumes<TrackerGeometry, TrackerDigiGeometryRecord>()),
-      pixelCPEToken_(esConsumes<PixelClusterParameterEstimator, TkPixelCPERecord>()) {
+      pixelCPEToken_(esConsumes<PixelClusterParameterEstimator, TkPixelCPERecord>(edm::ESInputTag("", "PixelCPEGeneric"))) {
 //now do what ever initialization is needed
 // define the selection to be considered later for the optimization
 // WARNING: recall that this has a huge impact on the analysis time AND on the output file size --> be carefull with your choice
@@ -283,17 +283,6 @@ Analyzer::Analyzer(const edm::ParameterSet& iConfig)
   if(calibrateTOF_){ 
       tofCalculator.loadTimeOffset(timeOffset_);
   }
-  /*
-  effl1Mu22 = new TEfficiency("eff1", "RAW EfficiencyL1 mu 22 vs bg", 100, 0, 5);
-  effl1Mu22or25 = new TEfficiency("eff2", "RAW Efficiency L1 mu 22 or 25 vs bg", 100, 0, 5);
-  effl1LastMu = new TEfficiency("eff3", "RAW Efficiency Last L1 see mu50 vs betagamma", 100, 0, 5);
-  effHltMu50 = new TEfficiency("eff4", "RAW Efficiency HLT Mu 50 vs betagamma", 100, 0, 5);
-
-  effl1Mu22PostS = new TEfficiency("eff1", "PostS EfficiencyL1 mu 22 vs bg", 100, 0, 5);
-  effl1Mu22or25PostS = new TEfficiency("eff2", "PostS Efficiency L1 mu 22 or 25 vs bg", 100, 0, 5);
-  effl1LastMuPostS = new TEfficiency("eff3", "PostS Efficiency Last L1 see mu50 vs betagamma", 100, 0, 5);
-  effHltMu50PostS = new TEfficiency("eff4", "PostS Efficiency HLT Mu 50 vs betagamma", 100, 0, 5);
-  */
 }
 
 Analyzer::~Analyzer() = default;
