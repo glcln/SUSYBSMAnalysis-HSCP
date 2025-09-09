@@ -1,522 +1,223 @@
-#ifndef SUSYBSMAnalysis_Analyzer_Analyzer_h
-#define SUSYBSMAnalysis_Analyzer_Analyzer_h
-// -*- C++ -*-
-//
-// Package:    SUSYBSMAnalysis/Analyzer
-// Class:      Analyzer
-//
-/**\class Analyzer Analyzer.cc SUSYBSMAnalysis/Analyzer/plugins/Analyzer.cc
-*/
-//
-// Original Author:  Emery Nibigira
-//         Created:  Thu, 01 Apr 2021 07:04:53 GMT
-// Modifications by Tamas Almos Vami
-//
+#ifndef ANALYZER_H
+#define ANALYZER_H
 
-// ~~~~~~~~~c++ include files ~~~~~~~~~
-#include <memory>
-#include <vector>
-#include <string>
+// system include files
 #include <map>
-#include <exception>
-#include <unordered_map>
 
-// ~~~~~~~~~ ROOT include files ~~~~~~~~~
-#include "TH1.h"
-#include "TH2.h"
-#include "TH3.h"
-#include "TDirectory.h"
 #include "TFile.h"
 #include "TTree.h"
-#include "TObject.h"
-#include "TVector3.h"
-#include "TChain.h"
-#include "TRandom3.h"
-#include "TTree.h"
-#include "TProfile.h"
+#include "TH1.h"
 #include "TLorentzVector.h"
-//#include "TCanvas.h"
 
-// ~~~~~~~~~ CMSSW include files ~~~~~~~~~
-
-
+// FWCore include files
+#include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/one/EDAnalyzer.h"
-#include "FWCore/ServiceRegistry/interface/Service.h"
-#include "CommonTools/UtilAlgos/interface/TFileService.h"
-#include "DataFormats/Common/interface/View.h"
+
+#include "FWCore/Framework/interface/Event.h"
+#include "FWCore/Framework/interface/MakerMacros.h"
+
+#include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/ParameterSet/interface/Registry.h"
+#include "FWCore/Utilities/interface/InputTag.h"
+#include "DataFormats/TrackReco/interface/HitPattern.h"
 #include "DataFormats/TrackReco/interface/Track.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "DataFormats/TrackReco/interface/DeDxHitInfo.h"
-#include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCParticle.h"
-#include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCPIsolation.h"
-#include "AnalysisDataFormats/SUSYBSMObjects/interface/MuonSegment.h"
-// Muons
+
+#include "CommonTools/UtilAlgos/interface/TFileService.h"
+#include "DataFormats/Common/interface/Ref.h"
+#include "FWCore/Framework/interface/ESHandle.h"
+#include "FWCore/Framework/interface/EventSetup.h"
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include "FWCore/ServiceRegistry/interface/Service.h"
+#include "math.h"
+
 #include "DataFormats/MuonReco/interface/Muon.h"
-#include "DataFormats/MuonReco/interface/MuonTimeExtra.h"
-#include "DataFormats/MuonReco/interface/MuonTimeExtraMap.h"
+#include "DataFormats/MuonReco/interface/MuonFwd.h"
 #include "DataFormats/MuonReco/interface/MuonSelectors.h"
-// Muons CSC segments
-#include "DataFormats/CSCRecHit/interface/CSCSegment.h"
-#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
-#include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
-#include "DataFormats/PatCandidates/interface/IsolatedTrack.h"
-#include "DataFormats/PatCandidates/interface/PFIsolation.h"
-#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 
 #include "DataFormats/VertexReco/interface/Vertex.h"
-#include "DataFormats/Scalers/interface/LumiScalers.h"
+#include "DataFormats/VertexReco/interface/VertexFwd.h"
 
-#include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/MakerMacros.h"
-#include "FWCore/Framework/interface/Event.h"
-#include "FWCore/MessageLogger/interface/MessageLogger.h"
-#include "FWCore/ParameterSet/interface/ParameterSet.h"
+//#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+//#include "DataFormats/HepMCCandidate/interface/GenParticleFwd.h"
+#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+#include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
 
-#include "DataFormats/Common/interface/ValueMap.h"
+#include "DataFormats/Math/interface/deltaR.h"
+
 #include "DataFormats/Common/interface/TriggerResults.h"
-#include "DataFormats/HLTReco/interface/TriggerEvent.h"
 #include "FWCore/Common/interface/TriggerNames.h"
-
-#include "DataFormats/HLTReco/interface/TriggerObject.h"
+#include "FWCore/Common/interface/TriggerResultsByName.h"
 #include "DataFormats/HLTReco/interface/TriggerEvent.h"
 #include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
-#include "DataFormats/PatCandidates/interface/PackedTriggerPrescales.h"
-#include "DataFormats/PatCandidates/interface/Electron.h"
-#include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 
-#include "TrackingTools/TransientTrackingRecHit/interface/TransientTrackingRecHit.h"
-#include "TrackingTools/TrackAssociator/interface/TrackDetectorAssociator.h"
-#include "TrackingTools/PatternTools/interface/Trajectory.h"
-#include "TrackingTools/TrackFitters/interface/TrajectoryStateCombiner.h"
-#include "TrackingTools/TrajectoryState/interface/TrajectoryStateTransform.h"
-#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
-#include "TrackingTools/PatternTools/interface/TrajTrackAssociation.h"
-
-#include "DataFormats/TrackerRecHit2D/interface/SiPixelRecHit.h"
-
-
-#include "DataFormats/METReco/interface/CaloMET.h"
-#include "DataFormats/METReco/interface/PFMET.h"
-#include "DataFormats/METReco/interface/PFMETFwd.h"
-#include "DataFormats/JetReco/interface/CaloJet.h"
-#include "DataFormats/JetReco/interface/PFJet.h"
-#include "DataFormats/JetReco/interface/PFJetCollection.h"
 #include "DataFormats/L1Trigger/interface/EtSum.h"
 #include "DataFormats/L1Trigger/interface/EtSumHelper.h"
+#include "DataFormats/METReco/interface/PFMET.h"
+//#include "DataFormats/METReco/interface/PFMETFwd.h"
+#include "DataFormats/METReco/interface/CaloMET.h"
+#include "DataFormats/PatCandidates/interface/MET.h"
+#include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCParticle.h"
 
-#include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
+/// MINI-AOD
+#include "DataFormats/PatCandidates/interface/IsolatedTrack.h"
+#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
+#include "DataFormats/PatCandidates/interface/Muon.h"
+#include "DataFormats/PatCandidates/interface/Electron.h"
+#include "DataFormats/PatCandidates/interface/Jet.h"
 
-#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
-#include "CondFormats/L1TObjects/interface/L1GtTriggerMenu.h"
-#include "DataFormats/L1GlobalTrigger/interface/L1GlobalTriggerReadoutRecord.h"
-#include "DataFormats/L1TGlobal/interface/GlobalAlgBlk.h"
-#include "DataFormats/L1TGlobal/interface/GlobalExtBlk.h"
-//#include "DataFormats/L1TGlobalTrigger/interface/GlobalAlgBlk.h"
-//#include "DataFormats/L1TGlobalTrigger/interface/L1TGlobalOutput.h"
-
-
-//
-// ~~~~~~~~~ user include files ~~~~~~~~~
-#define FWCORE
-
+///TRACKER Low Level
+#include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
+#include "Geometry/Records/interface/TrackerTopologyRcd.h"
+#include "Geometry/Records/interface/TrackerTopologyRcd.h"
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
 #include "RecoLocalTracker/Records/interface/TkPixelCPERecord.h"
 #include "RecoLocalTracker/ClusterParameterEstimator/interface/PixelClusterParameterEstimator.h"
-#include "Geometry/Records/interface/TrackerTopologyRcd.h"
-#include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
-#include "CommonTools/Egamma/interface/ConversionTools.h"
 
-#include "DataFormats/ParticleFlowReco/interface/PFDisplacedVertex.h"
+///Timing from Muon detectors
+#include "DataFormats/MuonReco/interface/MuonTimeExtra.h"
+#include "DataFormats/MuonReco/interface/MuonTimeExtraMap.h"
 
-#include "SUSYBSMAnalysis/Analyzer/interface/CommonFunction.h"
-#include "SUSYBSMAnalysis/Analyzer/interface/DeDxUtility.h"
-#include "SUSYBSMAnalysis/Analyzer/interface/TOFUtility.h"
-#include "SUSYBSMAnalysis/Analyzer/interface/TupleMaker.h"
-#include "SUSYBSMAnalysis/Analyzer/interface/SaturationCorrection.h"
-#include "SUSYBSMAnalysis/Analyzer/interface/SaturationCorrectionInStrip.h"
-#include "SUSYBSMAnalysis/Analyzer/interface/MCWeight.h"
-#include "SUSYBSMAnalysis/Analyzer/interface/Regions.h"
+////////
+#define FWCORE
+#include "AnalysisDataFormats/SUSYBSMObjects/interface/HSCParticle.h"
+#include "SUSYBSMAnalysis/HSCP/interface/TreeManager.h"
+#include "SUSYBSMAnalysis/HSCP/interface/HSCPVertexSelector.h"
 #include "SUSYBSMAnalysis/Analyzer/interface/TrigToolsFuncs.h"
-#include "SUSYBSMAnalysis/HSCP/interface/MuonTimingCalculator.h"
+#include "SUSYBSMAnalysis/HSCP/interface/HSCPDeDxTool.h"
+///////
+
+namespace HSCPType {
+  enum Type { globalMuon, trackerMuon, matchedStandAloneMuon, standAloneMuon, innerTrack, unknown };
+}
 
 
+using namespace edm;
 using namespace std;
-class TupleMaker;
-class MCWeight;
+
+static constexpr const char* const MOD = "Analyzer";
 
 class Analyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
 public:
-  explicit Analyzer(const edm::ParameterSet&);
-  ~Analyzer();
+  explicit Analyzer(const edm::ParameterSet &);
+  ~Analyzer() override;
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
-  float muonRecoSFsForTrackEta(float eta, int syst);
-  float muonIdSFsForTrackEta(float eta, int syst);
-  float muonTriggerSFsForTrackEta(float eta, int syst);
-  float triggerSystFactor(float eta, float beta, int syst);
-
-  void initializeCuts(edm::Service<TFileService>& fs,
-                      vector<float>& CutPt,
-                      vector<float>& CutI,
-                      vector<float>& CutTOF,
-                      vector<float>& CutPt_Flip,
-                      vector<float>& CutI_Flip,
-                      vector<float>& CutTOF_Flip);
-  template <typename T, size_t n>
-  bool passPreselection(T (&passedCutsArray)[n], bool verbose);
-
-  bool passSelection(const reco::TrackRef track,
-                     const reco::DeDxData* dedxSObj,
-                     const reco::DeDxData* dedxMObj,
-                     const reco::MuonTimeExtra* tof,
-                     const int& CutIndex,
-                     Tuple* tuple,
-                     const bool isFlip,
-                     const float GenBeta,
-                     const bool RescaleP,
-                     const float RescaleI,
-                     const float RescaleT);
-
-  float shiftForPt(const float& pt, const float& eta, const float& phi, const int& charge);
-  GlobalPoint getOuterHitPos(const edm::EventSetup& iSetup, const reco::DeDxHitInfo* dedxHits);
-  float SegSep(const reco::TrackRef track, const edm::Event& iEvent, float& minPhi, float& minEta);
-  float combineProbs(float probOnTrackWMulti, int numRecHits) const;
-  bool isHSCPgenID(const reco::GenParticle& gen);
-  void calculateSyst(const reco::TrackRef track,
-                     const reco::DeDxHitInfo* dedxHits,
-                     const reco::DeDxData* dedxSObj,
-                     const reco::DeDxData* dedxMObj,
-                     const reco::MuonTimeExtra* tof,
-                     const edm::Event& iEvent,
-                     const edm::EventSetup& iSetup,
-                     const float pixelProbs[],
-                     Tuple* tuple,
-                     const float GenBeta,
-                     float MassErr,
-                     const float closestBackgroundPDGsIDs[]);
-   const reco::Candidate* findFirstMotherWithDifferentID(const reco::Candidate *particle);
-   const reco::Candidate* findOriginalMotherWithSameID(const reco::Candidate *particle);
-
-
 private:
-  virtual void beginJob() override;
-  virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
-  virtual void endJob() override;
-//  virtual void isPixelTrack(const edm::Ref<std::vector<Trajectory>>&, bool&, bool&);
+  void beginJob() override;
+  //void beginRun(edm::Run const &, edm::EventSetup const &) override;
+  void analyze(const edm::Event&, const edm::EventSetup&) override;
+  void endJob() override;
 
+  int type(susybsm::HSCParticle hscp);
 
   // ----------member data ---------------------------
+  // HSCP
   edm::EDGetTokenT<vector<susybsm::HSCParticle>> hscpToken_;
-  edm::EDGetTokenT<reco::TrackCollection> genTrackToken_;
-  edm::EDGetTokenT<edm::ValueMap<susybsm::HSCPIsolation>> hscpIsoToken_;
-  edm::EDGetTokenT<susybsm::MuonSegmentCollection> muonSegmentToken_;
+
+  edm::EDGetTokenT<edm::TriggerResults> triggerToken_;
+  edm::EDGetTokenT<pat::TriggerObjectStandAloneCollection> triggerObjects_;
+  edm::EDGetTokenT<trigger::TriggerEvent> trigEventToken_;
+
+  edm::EDGetTokenT<vector<reco::Vertex>> vertexToken_;
+
+  edm::EDGetTokenT<edm::View<pat::IsolatedTrack>> trackToken_;
+  edm::EDGetTokenT<edm::View<pat::IsolatedTrack>> trackIsoToken_;
+
+  edm::EDGetTokenT<std::vector<pat::Muon> > muonToken_;
+  edm::EDGetTokenT<std::vector<pat::Muon> > MTmuonToken_;
+
+  // edm::EDGetTokenT<reco::MuonTimeExtraMap> muonTimeToken_;  // for reading inverse beta
+  // edm::EDGetTokenT<reco::MuonTimeExtraMap> muonDtTimeToken_;
+  // edm::EDGetTokenT<reco::MuonTimeExtraMap> muonCscTimeToken_;
+
+  edm::EDGetTokenT<std::vector<pat::PackedGenParticle>> genParticleToken_;
+  edm::EDGetTokenT<GenEventInfoProduct>  genEventToken_;
   edm::EDGetTokenT<reco::DeDxHitInfoAss> dedxToken_;
-  edm::EDGetTokenT<edm::ValueMap<int>> dedxPrescaleToken_;
-  edm::EDGetTokenT<reco::MuonTimeExtraMap> muonTimeToken_;  // for reading inverse beta
-  edm::EDGetTokenT<reco::MuonTimeExtraMap> muonDtTimeToken_;
-  edm::EDGetTokenT<reco::MuonTimeExtraMap> muonCscTimeToken_;
-  edm::EDGetTokenT<DTRecSegment4DCollection> muonDtSegmentToken_;
-  edm::EDGetTokenT<CSCSegmentCollection> muonCscSegmentToken_;
-  edm::EDGetTokenT<vector<reco::Vertex>> offlinePrimaryVerticesToken_;
-  edm::EDGetTokenT<vector<reco::Vertex>> inclusiveSecondaryVerticesToken_;
-  edm::EDGetTokenT<LumiScalersCollection> lumiScalersToken_;
-  edm::EDGetTokenT<vector<reco::Track>> refittedStandAloneMuonsToken_;
-  edm::EDGetTokenT<reco::BeamSpot> offlineBeamSpotToken_;
-  edm::EDGetTokenT<vector<reco::Muon>> muonToken_;
-  edm::EDGetTokenT<vector<reco::Conversion> > conversionsToken_;
-  edm::EDGetTokenT<reco::GsfElectronCollection> electronToken_;
 
-  edm::EDGetTokenT<edm::ValueMap<bool> > electron_cutbasedID_decisions_veto_Token_;
-  edm::EDGetTokenT<edm::ValueMap<bool> > electron_cutbasedID_decisions_loose_Token_;
-  edm::EDGetTokenT<edm::ValueMap<bool> > electron_cutbasedID_decisions_medium_Token_;
-  edm::EDGetTokenT<edm::ValueMap<bool> > electron_cutbasedID_decisions_tight_Token_;
-  edm::EDGetTokenT<edm::ValueMap<bool> > electron_mvaIsoID_decisions_wp80_Token_;
-  edm::EDGetTokenT<edm::ValueMap<bool> > electron_mvaIsoID_decisions_wp90_Token_;
-  edm::EDGetTokenT<edm::ValueMap<bool> > electron_mvaIsoID_decisions_wpHZZ_Token_;
-  edm::EDGetTokenT<edm::ValueMap<bool> > electron_mvaIsoID_decisions_wpLoose_Token_;
-  edm::EDGetTokenT<edm::ValueMap<bool> > electron_mvaNoIsoID_decisions_wp80_Token_;
-  edm::EDGetTokenT<edm::ValueMap<bool> > electron_mvaNoIsoID_decisions_wp90_Token_;
-  edm::EDGetTokenT<edm::ValueMap<bool> > electron_mvaNoIsoID_decisions_wpLoose_Token_;
-  edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken_;
-  edm::EDGetTokenT<pat::PackedTriggerPrescales> triggerPrescalesToken_;
-  edm::EDGetTokenT<trigger::TriggerEvent> trigEventToken_ ;
+  edm::EDGetTokenT<pat::PackedCandidateCollection> pfCandToken_;
+
+  edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> trackerTopoToken_;
+  edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> geometryToken_;
+  std::string pixelCPE_;// = "PixelCPETemplateReco";
+  edm::ESGetToken<PixelClusterParameterEstimator, TkPixelCPERecord> trackerPixelCPEToken_;
+
+  TreeManager  *treeManager_;
+  map<std::string, std::any> vars_;
+  //Cutflows
+  TH1F* EventCutFlow_;
+  std::vector<std::string> EventCutFlowLabels = {"AllEvents",">=1Vtx","PassedHLT","MatchedMu",">=1HSCP",">=1track",">=1muon"};
+  std::vector<std::string> HSCPCutFlowLabels = {"All",">=1Vtx","Technical","Trigger","p_{T}","#eta","N_{no-L1 pixel hits}","f_{valid/all hits}",
+                                                "N_{dEdx hits}","HighPurity","#chi^{2} / N_{dof}","d_{z}","d_{xy}","MiniRelIsoAll","MiniRelTkIso",
+                                                "E/p","#sigma_{p_{T}} / p_{T}^{2}","F_{i}"};
+  const int N_CUTS = EventCutFlowLabels.size();
+  const int NHSCP_CUTS = HSCPCutFlowLabels.size();
+
+  double mcEventWeight_;
+
+  std::vector<std::string> triggerPaths_;
+  std::vector<std::string> triggerBranchNames_;
+  bool triggerFilter_;
+
   edm::EDGetTokenT<l1t::EtSumBxCollection> l1TriggerEtSumToken_;
-
-
-  edm::EDGetTokenT<bool> primaryVertexFilterToken_;
-  edm::EDGetTokenT<bool> globalSuperTightHalo2016FilterToken_;
-  edm::EDGetTokenT<bool> HBHENoiseFilterToken_;
-  edm::EDGetTokenT<bool> HBHENoiseIsoFilterToken_;
-  edm::EDGetTokenT<bool> EcalDeadCellTriggerPrimitiveFilterToken_;
-  edm::EDGetTokenT<bool> BadPFMuonFilterToken_;
-  edm::EDGetTokenT<bool> BadPFMuonDzFilterToken_;
-  edm::EDGetTokenT<bool> hfNoisyHitsFilterToken_;
-  edm::EDGetTokenT<bool> eeBadScFilterToken_;
-  edm::EDGetTokenT<bool> ecalBadCalibFilterToken_;
-  
-  string filterName_;
-  string pathName_;
-  string triggerPathNamesFile_;
-  string muonHLTFilterNamesFile_;
-  static const int NTriggersMAX = 1201;
-  string triggerPathNames[NTriggersMAX];
-  static const int MAX_MuonHLTFilters = 69;
-  string muonHLTFilterNames[MAX_MuonHLTFilters];
-
-
-  bool matchToHLTTrigger_;
   edm::EDGetTokenT<std::vector<reco::PFMET>> pfMETToken_;
-  edm::EDGetTokenT<reco::PFJetCollection> pfJetToken_;
   edm::EDGetTokenT<std::vector<reco::CaloMET>> caloMETToken_;
-  edm::EDGetTokenT<std::vector<reco::CaloJet>> caloJetToken_;
-  edm::EDGetTokenT<trigger::TriggerEvent> triggerSummaryToken_;
-  edm::EDGetTokenT<std::vector<PileupSummaryInfo>> pileupInfoToken_;
-  edm::EDGetTokenT<std::vector<reco::GenParticle>> genParticleToken_;
-  edm::EDGetTokenT<edm::Association<reco::GenParticleCollection>> trackToGenToken_;
-  edm::EDGetTokenT<reco::PFCandidateCollection> pfCandToken_;
-  edm::EDGetTokenT<GenEventInfoProduct> genEventToken_; // for reading generator weight
-  edm::EDGetTokenT<L1GlobalTriggerReadoutRecord> l1GtReadoutRecordToken_;
+  edm::EDGetTokenT</*std::vector<pat::MET>*/pat::METCollection> metToken_;
+  //
+  edm::EDGetTokenT<edm::TriggerResults> noiseCleaningFilterToken_;
 
+  bool tapeRecallOnly_;
 
-  edm::Handle<edm::ValueMap<bool> > electron_cutbasedID_decisions_veto;
-  edm::Handle<edm::ValueMap<bool> > electron_cutbasedID_decisions_loose;
-  edm::Handle<edm::ValueMap<bool> > electron_cutbasedID_decisions_medium;
-  edm::Handle<edm::ValueMap<bool> > electron_cutbasedID_decisions_tight;
-  edm::Handle<edm::ValueMap<bool> > electron_mvaIsoID_decisions_wp80;
-  edm::Handle<edm::ValueMap<bool> > electron_mvaIsoID_decisions_wp90;
-  edm::Handle<edm::ValueMap<bool> > electron_mvaIsoID_decisions_wpHZZ;
-  edm::Handle<edm::ValueMap<bool> > electron_mvaIsoID_decisions_wpLoose;
-  edm::Handle<edm::ValueMap<bool> > electron_mvaNoIsoID_decisions_wp80;
-  edm::Handle<edm::ValueMap<bool> > electron_mvaNoIsoID_decisions_wp90;
-  edm::Handle<edm::ValueMap<bool> > electron_mvaNoIsoID_decisions_wpLoose;
+  std::string filterName_;
 
-  edm::Handle<bool> primaryVertexFilterHandle;
-  edm::Handle<bool> globalSuperTightHalo2016FilterHandle;
-  edm::Handle<bool> HBHENoiseFilterHandle;
-  edm::Handle<bool> HBHENoiseIsoFilterHandle;
-  edm::Handle<bool> EcalDeadCellTriggerPrimitiveFilterHandle;
-  edm::Handle<bool> BadPFMuonFilterHandle;
-  edm::Handle<bool> BadPFMuonDzFilterHandle;
-  edm::Handle<bool> hfNoisyHitsFilterHandle;
-  edm::Handle<bool> eeBadScFilterHandle;
-  edm::Handle<bool> ecalBadCalibFilterHandle;
-  
-  vector<string> trigger_met_, trigger_mu_;
-
-
-  vector<float> CutPt_, CutI_, CutTOF_;
-  vector<float> CutPt_Flip_, CutI_Flip_, CutTOF_Flip_;
-  //map<string, vector<float>> VCuts;
-
-  map<string, TProfile*> HCuts;
-
-  bool* HSCPTk;
-  bool* HSCPTk_SystP;
-  bool* HSCPTk_SystI;
-  bool* HSCPTk_SystT;
-  bool* HSCPTk_SystM;
-  bool* HSCPTk_SystPU;
-  bool* HSCPTk_SystHUp;
-  bool* HSCPTk_SystHDown;
-  float* MaxMass;
-  float* MaxMass_SystP;
-  float* MaxMass_SystI;
-  float* MaxMass_SystT;
-  float* MaxMass_SystM;
-  float* MaxMass_SystPU;
-  float* MaxMass_SystHUp;
-  float* MaxMass_SystHDown;
-
-  const reco::MuonTimeExtra* tof;
-  const reco::MuonTimeExtra* dttof;
-  const reco::MuonTimeExtra* csctof;
-
-  bool isCosmicSB = false;
-  bool isSemiCosmicSB = false;
-
-  unsigned int typeMode_;
-  unsigned int sampleType_;
-  string sampleName_;
-  string period_;
-
-  bool tapeRecallOnly_, doBefTrigPlots_, doBefPreSplots_, doPostPreSplots_, doSystsPlots_;
-
-  // binning for the pT, mass, IP distributions
-  float ptHistoUpperBound_ = 4000;
-  float pHistoUpperBound_ = 10000;
-  float massHistoUpperBound_ = 4000;
-  unsigned int massNBins_ = 400;
-  float cutOnIPbound_ = 1.0;
-  unsigned int predBins_ = 0;
-  unsigned int etaBins_ = 60;
-
-  // Ias quantiles and pT_cut used to validate the background estimate method in data
-  //float Ias_quantiles[5]={ 0.039, 0.045, 0.053, 0.064, 0.082 }; //data or signal
-  //Ias-quantiles update
-  //Ias-quantiles { 40%, 50%, 60%, 70%, 80%, 90%, 99%, 99.9% }
-  float Ias_quantiles[8]={ 0.014565036, 0.017987774, 0.022399569, 0.028518069, 0.038047370, 0.056746799, 0.13331622, 0.22018057 }; //data or signal -- IAS STRIP ONLY NO FSTRIP CUT
-  //float Ias_quantiles[8]={ 0.014565036, 0.017987774, 0.022399569, 0.028518069, 0.038047370, 0.056746799, 0.13331622, 0.35 }; //data or signal -- IAS STRIP ONLY NO FSTRIP CUT
-  float Fpix_quantiles[12]={ 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7,0.8,0.9,0.99,1.0 }; //data or signal -- F PIXEL ONLY
-  float Ih_quantile = 10000;
-  float Ih_low = 0.;
-
-  //pT cut update 60-->70 GeV
-  float pT_cut = 70;
-
-  // binning for eta, ih, p, mass distributions used to validate the background estimate method in data
-  //eta 120-->200
-  int reg_etabins_ = 200;
-  //ih 200-->2000
-  int reg_ihbins_ = 2000;
-  //p 200-->2000
-  int reg_pbins_ = 2000;
-  //mass 50-->200
-  int reg_massbins_ = 200;
-
-
-  float dEdxS_UpLim_ = 1.0;
-  float dEdxM_UpLim_ = 30.0;
-  unsigned int numDzRegions_ = 6;
-
-
-
-  //Variables used in the TOF only HSCP search
-  float DTRegion = 0.9;       //Define the dividing line between DT and
-  float CSCRegion = 0.9;      //CSC regions of CMS
-  float CosmicMinDz = 70.;    //Min dz displacement to be tagged as cosmic muon
-  float CosmicMaxDz = 120.;   //Max dz displacement for cosmic tagged tracks
-  float minSegEtaSep = 0.1;  //Minimum eta separation between SA track and muon segment on opposite side of detector
-
-  // Thresholds for candidate preselection
-  // TAV: I think these could / should be const 
-  float globalMaxEta_, globalMinPt_, globalMaxPt_;
-  unsigned int globalMinNOPH_;
-  float globalMinFOVH_;
-  unsigned int globalMinNOM_;
-  float globalMaxChi2_, globalMaxEoP_, globalMaxDZ_, globalMaxDXY_, globalMaxTIsol_, globalMinDeltaRminJet_, globalMaxMiniRelIsoAll_, globalMinIh_, globalMinTrackProbQCut_, globalMaxTrackProbQCut_, globalMinTrackProbXYCut_;
-  float globalMaxTrackProbXYCut_;
-  unsigned int minMuStations_;
-  float globalMinIs_, globalMinTOF_;
-  bool puTreatment_, createGiTemplates_, createAndExitGitemplates_;
-  int NbPuBins_;
-  vector<int> PuBins_;
- 
-  double GiSysParamOne_; 
-  double GiSysParamTwo_; 
-  vector<int> NominalEntries_;
-
-  float GlobalMinNDOF = 8;            // cut on number of     DegreeOfFreedom used for muon TOF measurement
-  float GlobalMinNDOFDT = 6;          // cut on number of DT  DegreeOfFreedom used for muon TOF measurement
-  float GlobalMinNDOFCSC = 6;         // cut on number of CSC DegreeOfFreedom used for muon TOF measurement
-  float GlobalMaxTOFErr = 0.15;       //0.07;   // cut on error on muon TOF measurement
-  bool exitWhenGenMatchNotFound_;
-  bool useTemplateLayer_ = false;
-
-  // The maximum number of different bins prediction is done in for any of the analyses (defines array size)
-  const int MaxPredBins = 6;
-
-  //=============================================================
-  Tuple* tuple;
-  Tuple* tuple_SigmaPt1_iso1_IhCut1_PtCut1;
-  Tuple* tuple_SigmaPt2_iso1_IhCut1_PtCut1;
-  Tuple* tuple_SigmaPt3_iso1_IhCut1_PtCut1;
-  Tuple* tuple_SigmaPt4_iso1_IhCut1_PtCut1;
-  Tuple* tuple_SigmaPt5_iso1_IhCut1_PtCut1;
-  Tuple* tuple_SigmaPt3_iso0_IhCut1_PtCut1;
-  Tuple* tuple_SigmaPt3_iso2_IhCut1_PtCut1;
-  Tuple* tuple_SigmaPt3_iso2_IhCut2_PtCut1;
-  Tuple* tuple_SigmaPt3_iso2_IhCut3_PtCut1;
-  Tuple* tuple_SigmaPt3_iso2_IhCut1_PtCut2;
-  Tuple* tuple_SigmaPt3_iso2_IhCut1_PtCut3;
-  Tuple* tuple_SigmaPt3_iso2_IhCut1_PtCut4;
-  TupleMaker* tuple_maker;
-  //=============================================================
-
-  TH3F* dEdxTemplates = nullptr;
-  vector<TH3F*> dEdxTemplatesPU;
-
-  TH3F* dEdxTemplates_OldSatCorr = nullptr;
-  vector<TH3F*> dEdxTemplatesPU_OldSatCorr;
-
+  int debug_;
+  bool saveDeDxHitInfo_;
+  /*float factorChargeToE_[2] = {3.61e-06, 3.61e-06 * 265};
+  float dEdxSF[2] = {1.0, 1.035};
+  float dEdxK = 2.3;
+  float dEdxC = 3.17;*/
   float dEdxSF_0_, dEdxSF_1_;
   float dEdxSF[2] = {dEdxSF_0_, dEdxSF_1_};
   float dEdxK_;
   float dEdxC_;
-  float globalIas_;
-  float globalFiStrips_;
-  float globalIh_;
+  bool useClusterCleaning = true;
+  bool useTemplateLayer_ = false;
 
-  dedxGainCorrector trackerCorrector;
-  string dEdxTemplate_;
-  string dEdxTemplate_OldSatCorr_;
-  bool enableDeDxCalibration_;
-  string timeOffset_;
-  muonTimingCalculator tofCalculator;
+  std::string dEdxTemplate_;
+  TH3F* dEdxTemplates = nullptr;
+  std::vector<TH3F*> dEdxTemplatesPU;
+  bool puTreatment_, createGiTemplates_, createAndExitGitemplates_;
+  vector<int> PuBins_ = std::vector<int>{0,20,25,30,35,200};
+  int NbPuBins_ = PuBins_.size() - 1;
 
-  unsigned int saveTree_;
+  //map<std::string, std::any> vars_vec_;
 
-  bool useClusterCleaning, isData, isBckg, isSignal;
-  bool plotsPreS_massSpectrumApproach_;
+  bool addStripClusterInfo_;
 
-  unsigned int currentRun_ = 0;
+  std::string year_;
 
-  MCWeight* mcWeight;
+  double trackPtMin_;
+  double trackEtaMin_;
+  double trackEtaMax_;
 
-  float eventWeight_ = 1.;
-  float GeneratorWeight_ = 1.;
-  float GeneratorBinningValues_ = 1.;
-  //double SampleWeight_ = 1.;
-  float CrossSection_ = 1.;
+  //==========================
+  //    Event information
+  //==========================
+  Bool_t isData_;
+  Int_t runNumber;
+  ULong64_t eventNumber;
+  UInt_t lumiBlock;
+  Bool_t triggerFired;
 
-  vector<float> PUSystFactor_;
-
-  TRandom3* RNG = nullptr;
-  TRandom3* RNG2 = nullptr;
-  TRandom3* RNG3 = nullptr;
-  bool is2016;
-  bool is2016G;
-
-  bool isMCglobal = false;
-
-  float IntegratedLuminosity_ = 33676.4;          //13TeV16
-
-  const std::string pixelCPE_;
-  const int debug_;
-  const bool hasMCMatch_,calcSyst_;
-  const bool calibrateTOF_;
-  const bool smearingTOF_;
-  const bool fpixMassStrategy_;
-  unsigned int trigInfo_;
-
-  
-  edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> topoToken_;
-  edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> tkGeometryToken_;
-  edm::ESGetToken<PixelClusterParameterEstimator, TkPixelCPERecord> pixelCPEToken_;
-
-  static constexpr const char* const MOD = "Analyzer";
-  int totMu22;
-  int totMu22or25;
-  int totLastMu;
-
-  int passMu22;
-  int passMu25;
-  int passLastMu;
-
-  int passMu22PostS;
-  int passMu25PostS;
-  int passLastMuPostS;
-
-  TEfficiency* effl1Mu22;
-  TEfficiency* effl1Mu22or25;
-  TEfficiency* effl1LastMu;
-  TEfficiency* effHltMu50;
-
-  TEfficiency* effl1Mu22PostS;
-  TEfficiency* effl1Mu22or25PostS;
-  TEfficiency* effl1LastMuPostS;
-  TEfficiency* effHltMu50PostS;
+  //==========================
+  //    Trigger
+  //==========================
+  const static int max_trig = 1000;
+  bool HLT_trig[max_trig];  
 };
-#endif
+
+#endif /* ANALYZER_H */

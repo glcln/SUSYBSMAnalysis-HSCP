@@ -18,6 +18,10 @@ class  CandidateSelector{
       CandidateSelector(const edm::ParameterSet& iConfig);
       bool isSelected(susybsm::HSCParticle& candidate);
 
+      bool isSelectedFromMiniAOD(susybsm::HSCParticle& candidate);
+
+      static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+
       bool  isTrack;
       bool  isMuon;
       bool  isMuonSTA;
@@ -47,5 +51,4 @@ class  CandidateSelector{
       float maxBetaRpc;
       float maxBetaEcal;
 };
-
 

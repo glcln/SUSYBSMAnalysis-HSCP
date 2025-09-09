@@ -46,7 +46,7 @@ MuonTimingProducer_Mini::MuonTimingProducer_Mini(const edm::ParameterSet& iConfi
    produces<reco::MuonTimeExtraMap>("csc");
 
    m_muonCollection = iConfig.getParameter<edm::InputTag>("MuonCollection");
-   muonToken_ = consumes<pat::MuonCollection>(m_muonCollection);
+   muonToken_ = consumes<pat::Muon>(m_muonCollection);
    // Load parameters for the TimingFiller
    edm::ParameterSet fillerParameters = iConfig.getParameter<edm::ParameterSet>("TimingFillerParameters");
    theTimingFiller_ = new MuonTimingFiller_Mini(fillerParameters, iC_);
@@ -74,7 +74,7 @@ MuonTimingProducer_Mini::produce(edm::Event& iEvent, const edm::EventSetup& iSet
   auto muonTimeMapCSC = std::make_unique<reco::MuonTimeExtraMap>();
   reco::MuonTimeExtraMap::Filler fillerCSC(*muonTimeMapCSC);
   
-  edm::Handle<pat::MuonCollection> muons; 
+  edm::Handle<pat::Muon> muons; 
   iEvent.getByToken(muonToken_, muons);
 
   unsigned int nMuons = muons->size();
