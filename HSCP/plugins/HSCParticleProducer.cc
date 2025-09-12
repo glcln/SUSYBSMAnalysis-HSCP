@@ -24,8 +24,8 @@ class HSCParticleProducer : public edm::one::EDFilter<edm::one::SharedResources>
        // the input collections
        trackToken_      {consumes<edm::View<pat::IsolatedTrack>>(iConfig.getParameter<edm::InputTag>("tracks"))},
        trackIsoToken_   {consumes<edm::View<pat::IsolatedTrack>>(iConfig.getParameter<edm::InputTag>("tracksIsolation"))},
-       muonsToken_      {consumes<pat::Muon>(iConfig.getParameter<edm::InputTag>("muons"))},
-       MTmuonsToken_    {consumes<pat::Muon>(iConfig.getParameter<edm::InputTag>("MTmuons"))},
+       muonsToken_      {consumes<std::vector<pat::Muon>>(iConfig.getParameter<edm::InputTag>("muons"))},
+       MTmuonsToken_    {consumes<std::vector<pat::Muon>>(iConfig.getParameter<edm::InputTag>("MTmuons"))},
        dedxHitInfoToken_{consumes<reco::DeDxHitInfoAss>(iConfig.getParameter<edm::InputTag>("dedxHitInfo"))},
        // the parameters
        minTkP          (iConfig.getParameter<double>  ("minTkP")), 
@@ -55,8 +55,9 @@ class HSCParticleProducer : public edm::one::EDFilter<edm::one::SharedResources>
 
     std::vector<susybsm::HSCParticle> getHSCPSeedCollection(edm::Handle<edm::View<pat::IsolatedTrack>>& trackCollectionHandle,  
                                                            edm::Handle<reco::DeDxHitInfoAss> dedxHitInfoHandle,
-                                                           edm::Handle<pat::Muon>& muonCollectionHandle,
-                                                           edm::Handle<pat::Muon>& MTmuonCollectionHandle);
+                                                           edm::Handle<std::vector<pat::Muon>>& muonCollectionHandle,
+                                                           edm::Handle<std::vector<pat::Muon>>& MTmuonCollectionHandle);
+                                                
 
     bool isGoodTrack(const pat::PackedCandidateRef track);
 
@@ -65,8 +66,8 @@ class HSCParticleProducer : public edm::one::EDFilter<edm::one::SharedResources>
 
     edm::EDGetTokenT<edm::View<pat::IsolatedTrack>> trackToken_;
     edm::EDGetTokenT<edm::View<pat::IsolatedTrack>> trackIsoToken_;
-    edm::EDGetTokenT<pat::Muon> muonsToken_;
-    edm::EDGetTokenT<pat::Muon> MTmuonsToken_;
+    edm::EDGetTokenT<std::vector<pat::Muon>> muonsToken_;
+    edm::EDGetTokenT<std::vector<pat::Muon>> MTmuonsToken_;
     edm::EDGetTokenT<reco::DeDxHitInfoAss> dedxHitInfoToken_;
 
     bool         useBetaFromTk;
@@ -143,8 +144,8 @@ bool HSCParticleProducer::filter(edm::Event& iEvent, const edm::EventSetup& iSet
 
 std::vector<susybsm::HSCParticle> HSCParticleProducer::getHSCPSeedCollection(edm::Handle<edm::View<pat::IsolatedTrack>>& trackCollectionHandle,  
                                                                     edm::Handle<reco::DeDxHitInfoAss> dedxHitInfoHandle,
-                                                                    edm::Handle<pat::Muon>& muonCollectionHandle, 
-                                                                    edm::Handle<pat::Muon>& MTmuonCollectionHandle)
+                                                                    edm::Handle<std::vector<pat::Muon>>& muonCollectionHandle,
+                                                                    edm::Handle<std::vector<pat::Muon>>& MTmuonCollectionHandle)
 {
   std::vector<susybsm::HSCParticle> HSCPCollection;
 
@@ -163,7 +164,7 @@ std::vector<susybsm::HSCParticle> HSCParticleProducer::getHSCPSeedCollection(edm
     //If track is from muon always keep it
     bool isMuon=false;
     for (size_t im = 0; im < muonCollectionHandle->size(); ++im) {
-      edm::Ptr<pat::Muon> muon(muonCollectionHandle, im);
+      const pat::MuonRef muon(muonCollectionHandle, im);
       
       if (muon->innerTrack().isNull()) continue;
       if( fabs( (1.0/muon->innerTrack()->pt())-(1.0/track->pt())) > maxInvPtDiff) continue;

@@ -46,7 +46,7 @@ MuonTimingProducer_Mini::MuonTimingProducer_Mini(const edm::ParameterSet& iConfi
    produces<reco::MuonTimeExtraMap>("csc");
 
    m_muonCollection = iConfig.getParameter<edm::InputTag>("MuonCollection");
-   muonToken_ = consumes<pat::Muon>(m_muonCollection);
+   muonToken_ = consumes<edm::View<pat::Muon>>(m_muonCollection);
    // Load parameters for the TimingFiller
    edm::ParameterSet fillerParameters = iConfig.getParameter<edm::ParameterSet>("TimingFillerParameters");
    theTimingFiller_ = new MuonTimingFiller_Mini(fillerParameters, iC_);
@@ -74,7 +74,7 @@ MuonTimingProducer_Mini::produce(edm::Event& iEvent, const edm::EventSetup& iSet
   auto muonTimeMapCSC = std::make_unique<reco::MuonTimeExtraMap>();
   reco::MuonTimeExtraMap::Filler fillerCSC(*muonTimeMapCSC);
   
-  edm::Handle<pat::Muon> muons; 
+  edm::Handle<edm::View<pat::Muon>> muons;
   iEvent.getByToken(muonToken_, muons);
 
   unsigned int nMuons = muons->size();
@@ -90,14 +90,12 @@ MuonTimingProducer_Mini::produce(edm::Event& iEvent, const edm::EventSetup& iSet
     reco::MuonTime rpcTime;
     reco::MuonTimeExtra combinedTime;
 
-    edm::Ref<std::vector<pat::Muon>> muonr(muons,i);
-    
-    theTimingFiller_->fillTiming(*muonr, dtTime, cscTime, rpcTime, combinedTime, iEvent, iSetup);
-    
+    edm::Ptr<pat::Muon> muonp = muons->ptrAt(i);
+    theTimingFiller_->fillTiming(*muonp, dtTime, cscTime, rpcTime, combinedTime, iEvent, iSetup);
+
     dtTimeColl[i] = dtTime;
     cscTimeColl[i] = cscTime;
     combinedTimeColl[i] = combinedTime;
-     
   }
   
   filler.insert(muons, combinedTimeColl.begin(), combinedTimeColl.end());

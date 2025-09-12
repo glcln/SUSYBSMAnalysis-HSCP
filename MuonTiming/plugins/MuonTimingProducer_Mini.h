@@ -53,7 +53,7 @@ class MuonTimingProducer_Mini : public edm::stream::EDProducer<> {
       
       // ----------member data ---------------------------
       edm::InputTag m_muonCollection;
-      edm::EDGetTokenT<pat::Muon> muonToken_;
+      edm::EDGetTokenT<edm::View<pat::Muon>> muonToken_;
       edm::ConsumesCollector iC_;
 
       MuonTimingFiller_Mini* theTimingFiller_;

@@ -88,6 +88,7 @@
 #include "SUSYBSMAnalysis/HSCP/interface/HSCPVertexSelector.h"
 #include "SUSYBSMAnalysis/Analyzer/interface/TrigToolsFuncs.h"
 #include "SUSYBSMAnalysis/HSCP/interface/HSCPDeDxTool.h"
+#include "SUSYBSMAnalysis/HSCP/interface/HelperFunctions.h"
 ///////
 
 namespace HSCPType {

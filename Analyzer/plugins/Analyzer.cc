@@ -1,6 +1,5 @@
 ////////
 #include "SUSYBSMAnalysis/Analyzer/plugins/Analyzer.h"
-#include "SUSYBSMAnalysis/HSCP/plugins/HelperFunctions.h"
 ///////
 
 
@@ -731,7 +730,7 @@ int Analyzer::type(susybsm::HSCParticle hscp){
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void Analyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   edm::ParameterSetDescription desc;
-  desc.setComment("Run2 Ntuplizer for HSCP search");
+  desc.setComment("Run2 Analyzer for HSCP search");
   desc.add("HscpCollection",      edm::InputTag("HSCParticleProducer"))->setComment("Input collection for HSCP candidate");
   desc.add("TriggerCollection",   edm::InputTag("TriggerResults","","HLT"));
   desc.add("TriggerObjects",      edm::InputTag("slimmedPatTrigger"));

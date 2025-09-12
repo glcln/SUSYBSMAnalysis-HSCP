@@ -7,6 +7,7 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 using namespace std;
 
 // Layer:
@@ -15,7 +16,7 @@ using namespace std;
 //     11-13: TEC ring
 //     14-20: TEC ring
 
-int Correction_FL_FR(const std::vector <int>&  Q, int layer, std::string TemplateFile)
+int Correction_FL_FR(const std::vector <uint16_t>&  Q, int layer, std::string TemplateFile)
 {
     int N_sat = 0;
     int ThresholdSat = -1;
@@ -88,7 +89,7 @@ int Correction_FL_FR(const std::vector <int>&  Q, int layer, std::string Templat
     return max_Q;
 }
 
-int Correction_LRC(const std::vector <int>&  Q, int layer, std::string TemplateFile, bool CENTER)
+int Correction_LRC(const std::vector <uint16_t>&  Q, int layer, std::string TemplateFile, bool CENTER)
 {
 	// SETUP 
 	int N_sat = 0;
@@ -165,7 +166,7 @@ int Correction_LRC(const std::vector <int>&  Q, int layer, std::string TemplateF
     else return MaxCorr;
 }
 
-int Correction_2strips(const std::vector <int>&  Q)
+int Correction_2strips(const std::vector <uint16_t>&  Q)
 {
     int Qcorr = -1;
     int SumQ = accumulate(Q.begin(), Q.end(), 0);
@@ -198,7 +199,7 @@ int Correction_2strips(const std::vector <int>&  Q)
     return Qcorr;
 }
 
-void ClusterShape(const std::vector <int>& Q, bool &left, bool &right, bool &center, bool &FullLeft, bool &FullRight)
+void ClusterShape(const std::vector <uint16_t>& Q, bool &left, bool &right, bool &center, bool &FullLeft, bool &FullRight)
 {
     // SETUP
     if (Q.empty()) return;
@@ -228,7 +229,7 @@ void ClusterShape(const std::vector <int>& Q, bool &left, bool &right, bool &cen
     return;
 }
 
-std::vector <int> ReturnCorrVec(const std::vector <int>& Q, const int layer, bool& AreSameCluster)
+std::vector <uint16_t> ReturnCorrVec(const std::vector <uint16_t>& Q, const int layer, bool& AreSameCluster)
 {
     // SETUP
     if (Q.empty()) return {};
@@ -245,7 +246,7 @@ std::vector <int> ReturnCorrVec(const std::vector <int>& Q, const int layer, boo
     MaxCorr = Correction_2strips(Q);
     if (MaxCorr > accumulate(Q.begin(), Q.end(), 0))
     {
-        std::vector <int> Qcorr2s;
+        std::vector <uint16_t> Qcorr2s;
         Qcorr2s.push_back(MaxCorr);
 
         AreSameCluster = false;
@@ -260,7 +261,7 @@ std::vector <int> ReturnCorrVec(const std::vector <int>& Q, const int layer, boo
     
 
     // SUM CORRECTION
-    std::vector <int> Qcorr;
+    std::vector <uint16_t> Qcorr;
     unsigned int i_max = find(Q.begin(), Q.end(), *max_element(Q.begin(), Q.end())) - Q.begin();
     for (unsigned int i=0; i<Q.size(); i++)
     {
@@ -280,7 +281,7 @@ std::vector <int> ReturnCorrVec(const std::vector <int>& Q, const int layer, boo
     }
 }
 
-std::vector <int> CrossTalkInvInStrip(const std::vector<int>& Q,
+std::vector <uint16_t> CrossTalkInvInStrip(const std::vector<uint16_t>& Q,
                                       const int layer,
                                       bool IfCorrApplied = true,
                                       float threshold = 20, 
@@ -289,7 +290,7 @@ std::vector <int> CrossTalkInvInStrip(const std::vector<int>& Q,
  
         // EXCLUSION PART: ANOMALOUS SHAPES or SATURATION
     if (Q.empty()) return {};
-    std::vector<int> QII;
+    std::vector<uint16_t> QII;
     if(Q.size()<2 || Q.size()>8)
     {
         for (unsigned int i=0;i<Q.size();i++) QII.push_back((int) Q[i]);
