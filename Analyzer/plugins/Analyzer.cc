@@ -770,7 +770,7 @@ void Analyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
 
   desc.addUntracked("AddStripClusterInfo",false)->setComment("Add dedx measurements");
 
-  descriptions.add("Analyzer",desc);
+  descriptions.add("HSCParticleAnalyzer",desc);
 
   //desc.setUnknown();
   //descriptions.addDefault(desc);
