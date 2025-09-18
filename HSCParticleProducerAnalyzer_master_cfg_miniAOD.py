@@ -1,14 +1,12 @@
 import os
 import FWCore.ParameterSet.Config as cms
 from FWCore.ParameterSet.VarParsing import VarParsing
-from Configuration.Eras.Era_Run2_2018_cff import Run2_2018
 
 options = VarParsing('analysis')
 
 # defaults
 options.outputFile = 'Histos_.root'
 options.maxEvents = -1 # -1 means all events
-
 
 options.register('GTAG', '106X_upgrade2018_realistic_v11BasedCandidateTmp_2022_08_09_01_32_34',
     VarParsing.multiplicity.singleton,
@@ -56,23 +54,10 @@ if options.isData:
 
 isAOD = options.isAOD
 
-## print configuration
-###############################################################
-print('\n')
-print('CMSSW version : {}'.format(os.environ['CMSSW_VERSION']))
-print('Global Tag    : {}'.format(options.GTAG))
-print('is AOD        : {}'.format(options.isAOD))
-print('is Data       : {}'.format(options.isData))
-print('Year          : {}'.format(options.year))
-print('TriggerFilter : {}'.format(options.triggerFilter))
-print('Output File   : {}'.format(options.outputFile))
-print('Input Files   : {}'.format(options.inputFiles))
-print('\n')
-#_____________________________________________________________#
+
 
 process = cms.Process("HSCPAnalysis")
 
-if options.isData: process.load("Configuration.Geometry.GeometryIdeal_cff")
 process.load('Configuration.StandardSequences.GeometryRecoDB_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
@@ -92,7 +77,8 @@ process.maxEvents = cms.untracked.PSet(input=cms.untracked.int32(options.maxEven
 # Define files of dataset
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
-    "/store/data/Run2018D/SingleMuon/MINIAOD/UL2018_MiniAODv2-v3/120000/005B1128-17E2-9148-A9E4-DCF8F1A550CB.root"
+    #"/store/data/Run2018D/SingleMuon/MINIAOD/UL2018_MiniAODv2-v3/120000/005B1128-17E2-9148-A9E4-DCF8F1A550CB.root"
+    "file:Local_2018D.root"
     ),
    inputCommands = cms.untracked.vstring("keep *", "drop *_MEtoEDMConverter_*_*")
 )
@@ -102,6 +88,20 @@ process.source.skipEvents = cms.untracked.uint32(0)
 process.TFileService = cms.Service("TFileService",
     fileName = cms.string(options.outputFile)
 )
+
+## print configuration
+###############################################################
+print('\n')
+print('CMSSW version : {}'.format(os.environ['CMSSW_VERSION']))
+print('Global Tag    : {}'.format(options.GTAG))
+print('is AOD        : {}'.format(options.isAOD))
+print('is Data       : {}'.format(options.isData))
+print('Year          : {}'.format(options.year))
+print('TriggerFilter : {}'.format(options.triggerFilter))
+print('Output File   : {}'.format(options.outputFile))
+print('Input Files   : {}'.format(process.source.fileNames))
+print('\n')
+#_____________________________________________________________#
 
 ## Conditions data
 ###############################################################
@@ -125,22 +125,20 @@ if (options.isData and len(options.LUMITOPROCESS)>0):
 triggerList=["*"]
 if options.year == 2017:
     triggerList=[
-        "HLT_PFMET120_PFMHT120_IDTight_v*",
-        "HLT_Mu50_v*",
-        "HLT_PFHT500_PFMET100_PFMHT100_IDTight_v*",
-        "HLT_PFMETNoMu120_PFMHTNoMu120_IDTight_PFHT60_v*",
-        "HLT_MET105_IsoTrk50_v*",
-        "HLT_IsoMu27_v*"
-    ]
+        "HLT_PFMET120_PFMHT120_IDTight_v",
+        "HLT_Mu50_v",
+        "HLT_PFHT500_PFMET100_PFMHT100_IDTight_v",
+        "HLT_PFMETNoMu120_PFMHTNoMu120_IDTight_PFHT60_v",
+        "HLT_MET105_IsoTrk50_v",
+        "HLT_IsoMu27_v"]
 elif options.year == 2018:
     triggerList=[
-        "HLT_PFMET120_PFMHT120_IDTight_v*",
-        "HLT_Mu50_v*",
-        "HLT_PFHT500_PFMET100_PFMHT100_IDTight_v*",
-        "HLT_PFMETNoMu120_PFMHTNoMu120_IDTight_PFHT60_v*",
-        "HLT_MET105_IsoTrk50_v*",
-        "HLT_IsoMu24_v*"
-    ]
+        "HLT_PFMET120_PFMHT120_IDTight_v",
+        "HLT_Mu50_v",
+        "HLT_PFHT500_PFMET100_PFMHT100_IDTight_v",
+        "HLT_PFMETNoMu120_PFMHTNoMu120_IDTight_PFHT60_v",
+        "HLT_MET105_IsoTrk50_v",
+        "HLT_IsoMu24_v"]
 else:
     #do not apply trigger filter on signal
     triggerList=["*"]
@@ -183,8 +181,10 @@ else:
 ########################################################################
 
 process.load("SUSYBSMAnalysis.Analyzer.HSCParticleAnalyzer_cfi")
+process.load("SUSYBSMAnalysis.HSCP.HSCParticleProducer_cff")
+process.analysis = cms.Path(process.HSCParticleAnalyzer)
 
-process.HSCParticleAnalyzer.AddStripClusterInfo = False
+process.HSCParticleAnalyzer.AddStripClusterInfo = True
 process.HSCParticleAnalyzer.TriggerPaths = triggerList
 process.HSCParticleAnalyzer.TriggerFilter = triggerFilter
 process.HSCParticleAnalyzer.DeDxK = K
@@ -199,10 +199,10 @@ if isAOD:
     process.HSCPTuplePath += process.metFilters
     if not options.isData:
         process.HSCPTuplePath += process.genParticlesSkimmed
-    process.HSCPTuplePath += process.HSCParticleProducer
+    process.HSCPTuplePath += process.HSCParticleProducerSeq
     process.HSCPTuplePath += process.HSCParticleAnalyzer
 else:
-    process.HSCPTuplePath += process.HSCParticleProducer
+    process.HSCPTuplePath += process.HSCParticleProducerSeq
     process.HSCPTuplePath += process.HSCParticleAnalyzer
 
 process.endjob_step = cms.EndPath(process.endOfProcess)
@@ -213,3 +213,9 @@ process.schedule = cms.Schedule(process.HSCPTuplePath, process.endjob_step)
 
 process.options.numberOfConcurrentLuminosityBlocks = cms.untracked.uint32(1)
 process.options.numberOfThreads=cms.untracked.uint32(4)
+
+process.options = cms.untracked.PSet(
+    numberOfThreads = cms.untracked.uint32(1),
+    numberOfStreams = cms.untracked.uint32(0)
+)
+

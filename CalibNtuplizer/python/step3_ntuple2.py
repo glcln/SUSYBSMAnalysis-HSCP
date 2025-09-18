@@ -36,7 +36,7 @@ process.dedxHitInfo.minTrackPt = cms.double(0.5)
 #process.StripClusterMCanalysis.printOut = cms.untracked.int32(5)
 
 process.stage = cms.EDAnalyzer('ntuple'
-     , tracks             = cms.InputTag("generalTracks")
+     , tracks             = cms.InputTag("isolatedTracks")
      , dedx               = cms.InputTag("dedxHitInfo")
 #     , printOut           = cms.untracked.int32(-1)
      , printOut           = cms.untracked.int32(-1)

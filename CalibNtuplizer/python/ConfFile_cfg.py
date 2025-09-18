@@ -63,7 +63,7 @@ process.source = cms.Source("PoolSource",
 )
 
 process.stage = cms.EDAnalyzer('ntuple'
-     , tracks             = cms.InputTag("generalTracks")
+     , tracks             = cms.InputTag("isolatedTracks")
      , dedx               = cms.InputTag("dedxHitInfo")
      , printOut           = cms.untracked.int32(-1)
      , GenPart            = cms.InputTag("prunedGenParticles")

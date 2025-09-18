@@ -17,25 +17,25 @@ TrackAssociatorParametersForHSCPIsol.EBRecHitCollectionLabel       = cms.InputTa
 TrackAssociatorParametersForHSCPIsol.HBHERecHitCollectionLabel     = cms.InputTag("reducedHcalRecHits", "hbhereco")
 TrackAssociatorParametersForHSCPIsol.HORecHitCollectionLabel       = cms.InputTag("reducedHcalRecHits", "horeco")
 
-HSCPIsolation = cms.EDProducer("ProduceIsolationMap",
-      inputCollection  = cms.InputTag("generalTracks"),
-      IsolationConeDR  = cms.vdouble(0.1, 0.3, 0.5),
-      TkIsolationPtCut = cms.vdouble(10, 10, 10),
-      Label            = cms.vstring('R01', 'R03', 'R05'),
-      TKLabel          = cms.InputTag("generalTracks"),
-      TrackAssociatorParameters=TrackAssociatorParametersForHSCPIsol,
-      CandidateMinPt   = cms.double(10),
-)
+#HSCPIsolation = cms.EDProducer("ProduceIsolationMap",
+#      inputCollection  = cms.InputTag("isolatedTracks"),
+#      IsolationConeDR  = cms.vdouble(0.1, 0.3, 0.5),
+#      TkIsolationPtCut = cms.vdouble(10, 10, 10),
+#      Label            = cms.vstring('R01', 'R03', 'R05'),
+#      TKLabel          = cms.InputTag("isolatedTracks"),
+#      TrackAssociatorParameters=TrackAssociatorParametersForHSCPIsol,
+#      CandidateMinPt   = cms.double(10),
+#)
 
 
 ####################################################################################
 #   Save muon segments in a compressed format
 ####################################################################################
 
-MuonSegmentProducer = cms.EDProducer("MuonSegmentProducer",
-   CSCSegments        = cms.InputTag("cscSegments"),
-   DTSegments         = cms.InputTag("dt4DSegments"),
-)
+#MuonSegmentProducer = cms.EDProducer("MuonSegmentProducer",
+#   CSCSegments        = cms.InputTag("cscSegments"),
+#   DTSegments         = cms.InputTag("dt4DSegments"),
+#)
 
 
 ####################################################################################
@@ -51,25 +51,24 @@ from TrackPropagation.SteppingHelixPropagator.SteppingHelixPropagatorAny_cfi imp
 
 from SUSYBSMAnalysis.HSCP.HSCPSelections_cff import *
 HSCParticleProducer = cms.EDFilter("HSCParticleProducer",
-   TrackAssociatorParameterBlock, #Needed for ECAL/Track Matching
+   #TrackAssociatorParameterBlock, #Needed for ECAL/Track Matching
 
    #DOES THE PRODUCER ACT AS AN EDFILTER?
    filter = cms.bool(True),
 
    #WHAT (BETA) INFORMATION TO COMPUTE
-   useBetaFromTk      = cms.bool(True),  #does nothing because we have all the info saved in EDM format
-   useBetaFromMuon    = cms.bool(True),  #does nothing because we have all the info saved in EDM format
-   useBetaFromRpc     = cms.bool(False), #must be updated for AOD
-   useBetaFromEcal    = cms.bool(False), #must be updated for AOD and 74X
+   #useBetaFromTk      = cms.bool(True),  #does nothing because we have all the info saved in EDM format
+   #useBetaFromMuon    = cms.bool(True),  #does nothing because we have all the info saved in EDM format
+   #useBetaFromRpc     = cms.bool(False), #must be updated for AOD
+   #useBetaFromEcal    = cms.bool(False), #must be updated for AOD and 74X
 
    #TAG OF THE REQUIRED INPUT COLLECTION (ONLY ACTIVATED CALCULATOR)
-   tracks             = cms.InputTag("generalTracks"),
-   tracksIsolation    = cms.InputTag("generalTracks"),
-   muons              = cms.InputTag("muons"),
-   MTmuons            = cms.InputTag("muons"),
-   EBRecHitCollection = cms.InputTag("ecalRecHit:EcalRecHitsEB"),
-   EERecHitCollection = cms.InputTag("ecalRecHit:EcalRecHitsEE"),
-   rpcRecHits         = cms.InputTag("rpcRecHits"),
+   tracks             = cms.InputTag("isolatedTracks"),
+   tracksIsolation    = cms.InputTag("isolatedTracks"),
+   slimmedMuons       = cms.InputTag("slimmedMuons"),
+   #EBRecHitCollection = cms.InputTag("ecalRecHit:EcalRecHitsEB"),
+   #EERecHitCollection = cms.InputTag("ecalRecHit:EcalRecHitsEE"),
+   #rpcRecHits         = cms.InputTag("rpcRecHits"),
 
    #TRACK SELECTION FOR THE HSCP SEED
    minMuP             = cms.double(20),
@@ -77,20 +76,18 @@ HSCParticleProducer = cms.EDFilter("HSCParticleProducer",
    maxTkChi2          = cms.double(20),
    minTkHits          = cms.uint32(3),
    minSAMuPt          = cms.double(70),
-   minMTMuPt          = cms.double(70),
 
    #MUON/TRACK MATCHING THRESHOLDS (ONLY IF NO MUON INNER TRACK)
    minDR              = cms.double(0.1),
    maxInvPtDiff       = cms.double(0.005),
-   minMTDR              = cms.double(0.3),
 
    #SELECTION ON THE PRODUCED HSCP CANDIDATES (WILL STORE ONLY INTERESTING CANDIDATES)
    SelectionParameters = cms.VPSet(
-      HSCPSelectionDefault,                                                                                                
-      HSCPSelectionMTMuonOnly,                                                                                             
+      HSCPSelectionDefault,                                                                                                 
       HSCPSelectionSAMuonOnly,                                                                                             
       #HSCPSelectionMET,
    ),
+
 )
 
 ####################################################################################
@@ -111,5 +108,5 @@ HSCParticleSelector = cms.EDFilter("HSCParticleSelector",
 #   HSCP Candidate Sequence
 ####################################################################################
 
-HSCParticleProducerSeq = cms.Sequence(HSCPIsolation * MuonSegmentProducer * HSCParticleProducer)
+HSCParticleProducerSeq = cms.Sequence(HSCParticleProducer) # HSCPIsolation * MuonSegmentProducer
 

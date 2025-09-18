@@ -12,7 +12,6 @@ Analyzer::Analyzer(const edm::ParameterSet &iConfig) :
     trackToken_(consumes<edm::View<pat::IsolatedTrack>>(iConfig.getParameter<edm::InputTag>("TrackCollection"))),
     trackIsoToken_(consumes<edm::View<pat::IsolatedTrack>>(iConfig.getParameter<edm::InputTag>("TrackIsoCollection"))),
     muonToken_(consumes<std::vector<pat::Muon>>(iConfig.getParameter<edm::InputTag>("MuonCollection"))),
-    MTmuonToken_(consumes<std::vector<pat::Muon>>(iConfig.getParameter<edm::InputTag>("MTMuonCollection"))),
     // muonTimeToken_(consumes<reco::MuonTimeExtraMap>(iConfig.getParameter<edm::InputTag>("MuonTimeCollection"))),
     // muonDtTimeToken_(consumes<reco::MuonTimeExtraMap>(iConfig.getParameter<edm::InputTag>("MuonDtTimeCollection"))),
     // muonCscTimeToken_(consumes<reco::MuonTimeExtraMap>(iConfig.getParameter<edm::InputTag>("MuonCscTimeCollection"))),
@@ -740,7 +739,6 @@ void Analyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   desc.add("TrackCollection",     edm::InputTag("packedPFCandidates"));
   desc.add("TrackIsoCollection",  edm::InputTag("packedPFCandidates"));
   desc.add("MuonCollection",      edm::InputTag("slimmedMuons"));
-  desc.add("MTMuonCollection",    edm::InputTag("slimmedMuons"));
   // desc.add("MuonTimeCollection", edm::InputTag("muons", "combined"))->setComment("combined muon timing information");
   // desc.add("MuonDtTimeCollection", edm::InputTag("muons", "dt"))->setComment("dt");
   // desc.add("MuonCscTimeCollection", edm::InputTag("muons", "csc"))->setComment("csc");

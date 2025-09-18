@@ -130,7 +130,6 @@ private:
   edm::EDGetTokenT<edm::View<pat::IsolatedTrack>> trackIsoToken_;
 
   edm::EDGetTokenT<std::vector<pat::Muon> > muonToken_;
-  edm::EDGetTokenT<std::vector<pat::Muon> > MTmuonToken_;
 
   // edm::EDGetTokenT<reco::MuonTimeExtraMap> muonTimeToken_;  // for reading inverse beta
   // edm::EDGetTokenT<reco::MuonTimeExtraMap> muonDtTimeToken_;

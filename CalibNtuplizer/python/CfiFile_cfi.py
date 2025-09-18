@@ -2,7 +2,7 @@ import FWCore.ParameterSet.Config as cms
 
 demo = cms.EDAnalyzer('ntuple'
 #     ,tracks = cms.untracked.InputTag('ctfWithMaterialTracks')
-      , tracks             = cms.InputTag("generalTracks")
+      , tracks             = cms.InputTag("isolatedTracks")
       , dedx               = cms.InputTag("dedxHitInfo")
       , printOut = cms.untracked.int32(0)
       , GenPart            = cms.InputTag("prunedGenParticles")

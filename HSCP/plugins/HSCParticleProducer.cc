@@ -24,8 +24,7 @@ class HSCParticleProducer : public edm::one::EDFilter<edm::one::SharedResources>
        // the input collections
        trackToken_      {consumes<edm::View<pat::IsolatedTrack>>(iConfig.getParameter<edm::InputTag>("tracks"))},
        trackIsoToken_   {consumes<edm::View<pat::IsolatedTrack>>(iConfig.getParameter<edm::InputTag>("tracksIsolation"))},
-       muonsToken_      {consumes<std::vector<pat::Muon>>(iConfig.getParameter<edm::InputTag>("muons"))},
-       MTmuonsToken_    {consumes<std::vector<pat::Muon>>(iConfig.getParameter<edm::InputTag>("MTmuons"))},
+       muonsToken_      {consumes<std::vector<pat::Muon>>(iConfig.getParameter<edm::InputTag>("slimmedMuons"))},
        dedxHitInfoToken_{consumes<reco::DeDxHitInfoAss>(iConfig.getParameter<edm::InputTag>("dedxHitInfo"))},
        // the parameters
        minTkP          (iConfig.getParameter<double>  ("minTkP")), 
@@ -55,8 +54,7 @@ class HSCParticleProducer : public edm::one::EDFilter<edm::one::SharedResources>
 
     std::vector<susybsm::HSCParticle> getHSCPSeedCollection(edm::Handle<edm::View<pat::IsolatedTrack>>& trackCollectionHandle,  
                                                            edm::Handle<reco::DeDxHitInfoAss> dedxHitInfoHandle,
-                                                           edm::Handle<std::vector<pat::Muon>>& muonCollectionHandle,
-                                                           edm::Handle<std::vector<pat::Muon>>& MTmuonCollectionHandle);
+                                                           edm::Handle<std::vector<pat::Muon>>& muonCollectionHandle);
                                                 
 
     bool isGoodTrack(const pat::PackedCandidateRef track);
@@ -67,7 +65,6 @@ class HSCParticleProducer : public edm::one::EDFilter<edm::one::SharedResources>
     edm::EDGetTokenT<edm::View<pat::IsolatedTrack>> trackToken_;
     edm::EDGetTokenT<edm::View<pat::IsolatedTrack>> trackIsoToken_;
     edm::EDGetTokenT<std::vector<pat::Muon>> muonsToken_;
-    edm::EDGetTokenT<std::vector<pat::Muon>> MTmuonsToken_;
     edm::EDGetTokenT<reco::DeDxHitInfoAss> dedxHitInfoToken_;
 
     bool         useBetaFromTk;
@@ -99,10 +96,6 @@ bool HSCParticleProducer::filter(edm::Event& iEvent, const edm::EventSetup& iSet
   //edm::Handle<pat::Muon> muonCollectionHandle = iEvent.getHandle(muonsToken_);
   auto muonCollectionHandle = iEvent.getHandle(muonsToken_);
 
-  //information from the mean timer muons
-  //edm::Handle<pat::Muon> MTmuonCollectionHandle = iEvent.getHandle(MTmuonsToken_);
-  auto MTmuonCollectionHandle = iEvent.getHandle(MTmuonsToken_);
-
   // information from the tracks
   auto trackCollectionHandle = iEvent.getHandle(trackToken_);
 
@@ -119,7 +112,7 @@ bool HSCParticleProducer::filter(edm::Event& iEvent, const edm::EventSetup& iSet
   auto hscp = std::make_unique<susybsm::HSCParticleCollection>();
 
   // Fill the output collection with HSCP Candidate (the candiate only contains ref to muon AND/OR track object)
-  *hscp = getHSCPSeedCollection(trackCollectionHandle, dedxHitInfoHandle, muonCollectionHandle, MTmuonCollectionHandle);
+  *hscp = getHSCPSeedCollection(trackCollectionHandle, dedxHitInfoHandle, muonCollectionHandle);
 
   // cleanup the collection based on the input selection
   for(int i=0;i<(int)hscp->size();i++) {
@@ -144,8 +137,7 @@ bool HSCParticleProducer::filter(edm::Event& iEvent, const edm::EventSetup& iSet
 
 std::vector<susybsm::HSCParticle> HSCParticleProducer::getHSCPSeedCollection(edm::Handle<edm::View<pat::IsolatedTrack>>& trackCollectionHandle,  
                                                                     edm::Handle<reco::DeDxHitInfoAss> dedxHitInfoHandle,
-                                                                    edm::Handle<std::vector<pat::Muon>>& muonCollectionHandle,
-                                                                    edm::Handle<std::vector<pat::Muon>>& MTmuonCollectionHandle)
+                                                                    edm::Handle<std::vector<pat::Muon>>& muonCollectionHandle)
 {
   std::vector<susybsm::HSCParticle> HSCPCollection;
 
@@ -314,8 +306,7 @@ void HSCParticleProducer::fillDescriptions(edm::ConfigurationDescriptions& descr
   // TAG OF THE REQUIRED INPUT COLLECTION
   desc.add("tracks",           edm::InputTag("isolatedTracks"));
   desc.add("tracksIsolation",  edm::InputTag("isolatedTracks"));
-  desc.add("muons",            edm::InputTag("slimmedMuons"));
-  desc.add("MTmuons",          edm::InputTag("slimmedMuons"));
+  desc.add("slimmedMuons",     edm::InputTag("slimmedMuons"));
   desc.add("dedxHitInfo",      edm::InputTag("isolatedTracks"));
   // TRACK SELECTION FOR THE HSCP SEED
   desc.add<double>("minTkP",       30);
@@ -337,7 +328,6 @@ void HSCParticleProducer::fillDescriptions(edm::ConfigurationDescriptions& descr
   cand.add<bool>("onlyConsiderMuonSTA",false); HSCPSelection.addParameter<bool>("onlyConsiderMuonSTA",false);
   cand.add<bool>("onlyConsiderMuonGB", false); HSCPSelection.addParameter<bool>("onlyConsiderMuonGB", false);
   cand.add<bool>("onlyConsiderMuonTK", false); HSCPSelection.addParameter<bool>("onlyConsiderMuonTK", false);
-  cand.add<bool>("onlyConsiderMTMuon", false); HSCPSelection.addParameter<bool>("onlyConsiderMTMuon", false);
   cand.add<bool>("onlyConsiderRpc",    false); HSCPSelection.addParameter<bool>("onlyConsiderRpc",    false);
   cand.add<bool>("onlyConsiderEcal",   false); HSCPSelection.addParameter<bool>("onlyConsiderEcal",   false);
   //
@@ -349,7 +339,6 @@ void HSCParticleProducer::fillDescriptions(edm::ConfigurationDescriptions& descr
 
   cand.add<double>("minMuonP",     -1); HSCPSelection.addParameter<double>("minMuonP",     -1);
   cand.add<double>("minMuonPt",    -1); HSCPSelection.addParameter<double>("minMuonPt",    -1);
-  cand.add<double>("minMTMuonPt",  -1); HSCPSelection.addParameter<double>("minMTMuonPt",  -1);
   cand.add<double>("minSAMuonPt",  -1); HSCPSelection.addParameter<double>("minSAMuonPt",  -1);
 
   cand.add<double>("maxMuTimeDtBeta",  -1); HSCPSelection.addParameter<double>("maxMuTimeDtBeta",  -1);

@@ -104,7 +104,7 @@ HSCPValidator::HSCPValidator(const edm::ParameterSet& iConfig) :
   genParticlesToken_(consumes<edm::View<reco::GenParticle>>(iConfig.getParameter<edm::InputTag>("generatorLabel"))),
   simTracksToken_(consumes<edm::SimTrackContainer>(edm::InputTag("g4SimHits"))),
   trEvToken_(consumes<trigger::TriggerEvent>(edm::InputTag("hltTriggerSummaryAOD"))),
-  tkTracksToken_(consumes<reco::TrackCollection>(edm::InputTag("generalTracks"))),
+  tkTracksToken_(consumes<reco::TrackCollection>(edm::InputTag("isolatedTracks"))),
   dEdxTrackToken_(consumes<edm::ValueMap<reco::DeDxData> >(edm::InputTag("dedxHarmonic2"))),
   rpcRecHitsToken_(consumes<RPCRecHitCollection>(edm::InputTag("rpcRecHits"))),
   particleIds_ (iConfig.getParameter< std::vector<int> >("particleIds")),

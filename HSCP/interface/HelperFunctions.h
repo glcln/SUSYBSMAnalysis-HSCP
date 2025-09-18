@@ -142,7 +142,7 @@ bool findBestHLTMuonMatch(std::vector<F> trigObjs, std::vector<M>& muons, V high
 
 // matchPFCandToTrack
 template <typename P, typename T>
-int findBestPFCandMatch(std::vector<P>& pfCands, T& tk){
+int findBestPFCandMatch(P& pfCands, T& tk){
   int idx = -1;
   for (auto cand = pfCands.begin(); cand != pfCands.end(); cand++) {
     idx+=1;
