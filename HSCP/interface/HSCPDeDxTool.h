@@ -40,23 +40,9 @@ public:
   //void process();
 
   float harmonicMean(std::vector<float> v, float expo = -2);
-  float truncatedMean(std::vector<float> v, float rate = 0.40);
   float discriminatorIas(std::vector<float> v, bool symmetricSmirnov = false);
   unsigned int numberOfSaturatedClusters();
   std::vector<int> Convert(const std::vector<unsigned char>& input);
-  std::vector<uint16_t> CrossTalkInv(const std::vector<uint16_t>& Q,
-                                const float x1 = 0.10,
-                                const float x2 = 0.04,
-                                bool way = true,
-                                float threshold = 20,
-                                float thresholdSat = 25,
-                                bool isClusterCleaning = false);
-  std::vector<uint16_t> SaturationCorrection(const std::vector<uint16_t>&  Q, 
-                                        const float x1, 
-                                        const float x2, 
-                                        bool way,
-                                        float threshold,
-                                        float thresholdSat);
   bool isHitInsideTkModule(const LocalPoint hitPos, const DetId& detid, const SiStripCluster* cluster = nullptr);
 
   void computedEdx(float* scaleFactors, 
@@ -74,10 +60,6 @@ public:
   reco::DeDxData dedxDataPixelOnlyNoL1() {return dedxDataPixelNoL1_;}
   reco::DeDxData dedxDataStripOnly() {return dedxDataStrip_;}
 
-  // Truncated Mean
-  reco::DeDxData dedxTruncFullTracker() {return dedxTruncFullTracker_;}
-  reco::DeDxData dedxTruncStripOnly() {return dedxTruncStrip_;}
-
   reco::DeDxData dedxIasFullTracker() {return dedxIasFullTracker_;}
   reco::DeDxData dedxIasFullTrackerNoL1() {return dedxIasFullTrackerNoL1_;}
   reco::DeDxData dedxIasPixelOnly() {return dedxIasPixel_;}
@@ -86,7 +68,6 @@ public:
 
   //Extra Estimators
   std::vector<reco::DeDxData> dedxDataStripExtra() {return dedxDataStripExtra_;}
-  std::vector<reco::DeDxData> dedxTruncStripExtra() {return dedxTruncStripExtra_;}
 
   std::vector<float> clusterCharge() {return clusterCharge_;}
   std::vector<uint32_t> clusterDetId() {return clusterDetId_;}
@@ -125,9 +106,6 @@ private:
   reco::DeDxData  dedxDataPixelNoL1_          = reco::DeDxData(-1, -1, -1);
   reco::DeDxData  dedxDataStrip_              = reco::DeDxData(-1, -1, -1);
   //
-  reco::DeDxData dedxTruncFullTracker_       = reco::DeDxData(-1, -1, -1);
-  reco::DeDxData dedxTruncStrip_             = reco::DeDxData(-1, -1, -1);
-  //
   reco::DeDxData  dedxIasFullTracker_        = reco::DeDxData(-1, -1, -1);
   reco::DeDxData  dedxIasFullTrackerNoL1_    = reco::DeDxData(-1, -1, -1);
   reco::DeDxData  dedxIasPixel_              = reco::DeDxData(-1, -1, -1);
@@ -142,7 +120,6 @@ private:
 
   //Extra Estimators
   std::vector<reco::DeDxData> dedxDataStripExtra_ = {reco::DeDxData(-1, -1, -1)};
-  std::vector<reco::DeDxData> dedxTruncStripExtra_= {reco::DeDxData(-1, -1, -1)};
 
   //saveDeDxHitInfo
   std::vector<float> clusterCharge_;
@@ -281,7 +258,6 @@ void HSCPDeDxTool::computedEdx(float* scaleFactors,
   std::vector<int> debug_detid;
 
   dedxDataStripExtra_.clear();
-  dedxTruncStripExtra_.clear();
 
   clusterCharge_.clear();
   clusterDetId_.clear();
@@ -350,7 +326,6 @@ void HSCPDeDxTool::computedEdx(float* scaleFactors,
 
       const SiStripCluster* cluster = dedxHits_->stripCluster(h);
       std::vector<uint16_t> amplitudes(cluster->amplitudes().begin(), cluster->amplitudes().end()); //= Convert(cluster->amplitudes());
-      //UNUSED//std::vector<uint16_t> amplitudesPrim = CrossTalkInv(amplitudes,0.10,0.04,true);
 
       int layer = 0;
       if (detid.subdetId() == StripSubdetector::TIB) layer= abs(int(tkTopo_->tibLayer(detid)));
@@ -372,7 +347,6 @@ void HSCPDeDxTool::computedEdx(float* scaleFactors,
       }
       //if (useClusterCleaning&&!passedClusterCleaning) continue;
 
-      //std::cout<<"\t [+] "<<h<<"th hit passes ClusterCleaning cut "<<std::endl; //EMERY//
 
       //////////////////////////////////////////////////////////////
       //
@@ -384,8 +358,6 @@ void HSCPDeDxTool::computedEdx(float* scaleFactors,
       //
       //////////////////////////////////////////////////////////////
 
-      //DEBUG-------------------------------------------------
-      //UNUSED//amplitudes = SaturationCorrection(amplitudes,0.10,0.04,true,20,25);
       bool totrash = true;
       amplitudes = ReturnCorrVec(amplitudes, layer, totrash);// (crossTalkInvAlgo == 4)
       
@@ -478,9 +450,6 @@ void HSCPDeDxTool::computedEdx(float* scaleFactors,
   dedxDataStrip_     = reco::DeDxData(harmonicMean(dedxStrip), NSat, dedxStrip.size());
   clusterDeDxStrip_  = dedxStrip;
 
-  dedxTruncFullTracker_    = reco::DeDxData(truncatedMean(dedxFullTracker), NSat, dedxFullTracker.size());
-  dedxTruncStrip_           = reco::DeDxData(truncatedMean(dedxStrip), NSat, dedxStrip.size());
-
   dedxIasFullTracker_     = reco::DeDxData(discriminatorIas(dedxIasFullTracker), NSat, dedxIasFullTracker.size());
   dedxIasFullTrackerNoL1_ = reco::DeDxData(discriminatorIas(dedxFullTracker_noL1), NSat, dedxFullTracker_noL1.size());
   //
@@ -490,28 +459,18 @@ void HSCPDeDxTool::computedEdx(float* scaleFactors,
   dedxIasStrip_     = reco::DeDxData(discriminatorIas(dedxIasStrip), NSat, dedxIasStrip.size());
 
   if (addExtraDeDxEstimators){
-    for(int i=0; i<=35; i+=5)
-      dedxTruncStripExtra_.push_back(reco::DeDxData(truncatedMean(dedxStrip,float(i/100.)), NSat, dedxStrip.size()));
     std::vector<int> powers = {1,3,4};
     for (auto p : powers)
       dedxDataStripExtra_.push_back(reco::DeDxData(harmonicMean(dedxStrip, float(-p)), NSat, dedxStrip.size()));
   }
 
-  /*//if() {
-    std::cout<<"Using harmonic mean of"<<std::endl;
-    for(unsigned int i = 0; i < dedxStrip.size(); i++){
-      auto timenow =  std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-      char buf[100] = {0};
-      std::strftime(buf, sizeof(buf), "%Y-%m-%d %T", std::localtime(&timenow));
-      //std::cout<<"\t"<<"dedx["<<i<<"]: "<<dedxStrip[i]<<", detid="<<debug_detid[i] <<"\t (Q="<<debug_ClusterCharge[i]<<", pathlength="<<debug_pathlength[i]<<")"<<std::endl;
-      std::cout<<"\t"<<buf<<"| dedx["<<i<<"]: "<<dedxStrip[i]<<"\t (Q="<<debug_ClusterCharge[i]<<", pathlength="<<debug_pathlength[i]<<")"<<std::endl;
-    }
-    std::cout<<"EMERY::DeDx="<<harmonicMean(dedxStrip)//<<"\t useClusterCleaning="<<useClusterCleaning<<", passedClusterCleaning="<<passedClusterCleaning<<")"<<std::endl;
-    //std::cout
-    <<"\tTrack: pt="<<track_pt<<", track_eta="<<track_eta<<std::endl;
-  //}*/
-
 }
+
+
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------------------
+//                                                                      FUNCTION DEFINITION
+// ------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 float HSCPDeDxTool::harmonicMean(std::vector<float> v, float expo){
@@ -524,20 +483,6 @@ float HSCPDeDxTool::harmonicMean(std::vector<float> v, float expo){
   result = (size > 0) ? pow(result / size, 1. / expo) : -1.0;
 
   return result;
-}
-
-float HSCPDeDxTool::truncatedMean(std::vector<float> v, float rate){
-  int size = v.size();
-  float result = 0.0;
-
-  std::sort(v.begin(), v.end(), std::less<float>());
-  int nTrunc = size * rate;
-  for (int i = 0; i + nTrunc < size; i++) {
-    result += v[i];
-  }
-  result /= (size - nTrunc);
-
-  return (size > 0) ? result : -1.0;
 }
 
 float HSCPDeDxTool::discriminatorIas(std::vector<float> v, bool symmetricSmirnov){
@@ -554,16 +499,6 @@ float HSCPDeDxTool::discriminatorIas(std::vector<float> v, bool symmetricSmirnov
 
   return result;
 
-  /*float alpha = 1;
-  for (int i = 0; i < size; i++){
-    alpha *= v[i];
-  }
-  float logAlpha = log(alpha);
-  float probQm = 0;
-  for (int i = 0; i < size; i++){
-    probQm += ((pow(-logAlpha, i)) / (factorial(i)));
-  }
-  return alpha * probQm;*/
 }
 
 
@@ -602,104 +537,6 @@ std::vector<int> HSCPDeDxTool::Convert(const std::vector<unsigned char>& input) 
   }
   return output;
 }
-
-std::vector<uint16_t> HSCPDeDxTool::CrossTalkInv(const std::vector<uint16_t>& Q,
-                                const float x1,
-                                const float x2,
-                                bool way,
-                                float threshold,
-                                float thresholdSat,
-                                bool isClusterCleaning)
-{
-  const unsigned N = Q.size();
-  std::vector<uint16_t> QII;
-  std::vector<float> QI(N, 0);
-  Double_t a = 1 - 2 * x1 - 2 * x2;
-  //  bool debugbool=false;
-  TMatrix A(N, N);
-
-  //std::cout<<"\t\t A: Q.size() = "<<Q.size()<<std::endl;
-  //---
-  if (Q.size() < 2 || Q.size() > 8) {
-    for (unsigned int i = 0; i < Q.size(); i++) {
-      QII.push_back((uint16_t)Q[i]);
-    }
-    return QII;
-  }
-
-  if(way){
-      std::vector<uint16_t>::const_iterator mQ = max_element(Q.begin(), Q.end()) ;
-      if(*mQ>253){
-         //std::cout << "\t\t Max index: "<< std::distance(Q.begin(), mQ) <<" Q(max)="<<*mQ << ", Q(max-1)=" << *(mQ-1)<< ", Q(max+1)=" << *(mQ+1)  << std::endl;
-         if(*mQ==255 && *(mQ-1)>253 && *(mQ+1)>253 ) return Q ;
-         if(*(mQ-1)>thresholdSat && *(mQ+1)>thresholdSat && *(mQ-1)<254 && *(mQ+1)<254 &&  abs(*(mQ-1) - *(mQ+1)) < 40 ){
-             QII.push_back((10*(*(mQ-1))+10*(*(mQ+1)))/2); return QII;}
-      }
-   }
-  //---
-
-  for (unsigned int i = 0; i < N; i++) {
-    A(i, i) = a;
-    if (i < N - 1) {
-      A(i + 1, i) = x1;
-      A(i, i + 1) = x1;
-    } else
-      continue;
-    if (i < N - 2) {
-      A(i + 2, i) = x2;
-      A(i, i + 2) = x2;
-    }
-  }
-
-  if (N == 1)
-    A(0, 0) = 1 / a;
-  else
-    A.InvertFast();
-
-  for (unsigned int i = 0; i < N; i++) {
-    for (unsigned int j = 0; j < N; j++) {
-      QI[i] += A(i, j) * (float)Q[j];
-    }
-  }
-
-  for (unsigned int i = 0; i < QI.size(); i++) {
-    if (QI[i] < threshold)
-      QI[i] = 0;
-    QII.push_back((uint16_t)QI[i]);
-  }
-
-  return QII;
-}
-
-
-std::vector<uint16_t> HSCPDeDxTool::SaturationCorrection(const std::vector<uint16_t>&  Q, const float x1, const float x2, bool way,float threshold,float thresholdSat) {
-  const unsigned N=Q.size();
-  std::vector<uint16_t> QII;
-  std::vector<float> QI(N,0);
-
-//---  only for one max well-defined
- if(Q.size()<2 || Q.size()>8){
-        for (unsigned int i=0;i<Q.size();i++){
-                QII.push_back((uint16_t) Q[i]);
-        }
-        return QII;
-  }
- if(way){
-          std::vector<uint16_t>::const_iterator mQ = max_element(Q.begin(), Q.end())      ;
-          if(*mQ>253){
-                 if(*mQ==255 && *(mQ-1)>253 && *(mQ+1)>253 ) return Q ;
-                 if(*(mQ-1)>thresholdSat && *(mQ+1)>thresholdSat && *(mQ-1)<254 && *(mQ+1)<254 &&  abs(*(mQ-1) - *(mQ+1)) < 40 ){
-                     QII.push_back((10*(*(mQ-1))+10*(*(mQ+1)))/2); return QII;}
-          }
-      else{
-          return Q; // no saturation --> no x-talk inversion
-      }
-  }
-//---
- // do nothing else
- return Q;
-}
-
 
 
 bool HSCPDeDxTool::isHitInsideTkModule(const LocalPoint hitPos, const DetId& detid, const SiStripCluster* cluster) {

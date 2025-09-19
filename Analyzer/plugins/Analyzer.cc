@@ -12,9 +12,6 @@ Analyzer::Analyzer(const edm::ParameterSet &iConfig) :
     trackToken_(consumes<edm::View<pat::IsolatedTrack>>(iConfig.getParameter<edm::InputTag>("TrackCollection"))),
     trackIsoToken_(consumes<edm::View<pat::IsolatedTrack>>(iConfig.getParameter<edm::InputTag>("TrackIsoCollection"))),
     muonToken_(consumes<std::vector<pat::Muon>>(iConfig.getParameter<edm::InputTag>("MuonCollection"))),
-    // muonTimeToken_(consumes<reco::MuonTimeExtraMap>(iConfig.getParameter<edm::InputTag>("MuonTimeCollection"))),
-    // muonDtTimeToken_(consumes<reco::MuonTimeExtraMap>(iConfig.getParameter<edm::InputTag>("MuonDtTimeCollection"))),
-    // muonCscTimeToken_(consumes<reco::MuonTimeExtraMap>(iConfig.getParameter<edm::InputTag>("MuonCscTimeCollection"))),
     genParticleToken_(consumes<std::vector<pat::PackedGenParticle>>(iConfig.getParameter<edm::InputTag>("GenPartCollection"))),
     genEventToken_(consumes<GenEventInfoProduct>(iConfig.getParameter<edm::InputTag>("GenCollection"))),
     dedxToken_(consumes<reco::DeDxHitInfoAss>(iConfig.getParameter<edm::InputTag>("DeDxCollection"))),
@@ -605,42 +602,44 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
       addToVectorBranch(vars_,"IsoTrack_px", track->px());
       addToVectorBranch(vars_,"IsoTrack_py", track->py());
       addToVectorBranch(vars_,"IsoTrack_pz", track->pz());
-      addToVectorBranch(vars_,"IsoTrack_pt", track->pt());
-      addToVectorBranch(vars_,"IsoTrack_ptError", track->pseudoTrack().ptError() );
-      addToVectorBranch(vars_,"IsoTrack_ptErrOverPt", track->pseudoTrack().ptError()/track->pseudoTrack().pt() );
-      addToVectorBranch(vars_,"IsoTrack_ptErrOverPt2", track->pseudoTrack().ptError()/track->pseudoTrack().pt2() );
-      addToVectorBranch(vars_,"IsoTrack_eta", track->eta() );
       addToVectorBranch(vars_,"IsoTrack_phi", track->phi() );
-      addToVectorBranch(vars_,"IsoTrack_dz", track->dz(bestVertex.position()) );
       addToVectorBranch(vars_,"IsoTrack_dzError", track->dzError() );
-      addToVectorBranch(vars_,"IsoTrack_dxy", track->dxy(bestVertex.position()) );
       addToVectorBranch(vars_,"IsoTrack_dxyError", track->dxyError() );
-      addToVectorBranch(vars_,"IsoTrack_normChi2", track->pseudoTrack().normalizedChi2() );
-      addToVectorBranch(vars_,"IsoTrack_isHighPurityTrack", isHighPurity );
-      addToVectorBranch(vars_,"IsoTrack_fractionOfValidHits", track->pseudoTrack().validFraction());
       addToVectorBranch(vars_,"IsoTrack_numberOfValidHits", track->pseudoTrack().numberOfValidHits());
       addToVectorBranch(vars_,"IsoTrack_numberOfValidPixelHits", track->pseudoTrack().hitPattern().numberOfValidPixelHits());
       addToVectorBranch(vars_,"IsoTrack_numberOfTrackerLayers", track->pseudoTrack().hitPattern().trackerLayersWithMeasurement());
       addToVectorBranch(vars_,"IsoTrack_isPFcand", track_isPF);
       addToVectorBranch(vars_,"IsoTrack_pfMiniRelIsoChg", miniRelIsoChg);
       addToVectorBranch(vars_,"IsoTrack_pfMiniRelIsoAll", miniRelIsoAll);
-      addToVectorBranch(vars_,"IsoTrack_pfEnergyOverP", pf_energy/track->p());
       addToVectorBranch(vars_,"IsoTrack_pfEcalEnergy", pf_ecalEnergy);
       addToVectorBranch(vars_,"IsoTrack_pfHcalEnergy", pf_hcalEnergy);
+      addToVectorBranch(vars_,"IsoTrack_ptError", track->pseudoTrack().ptError() );
 
       addToVectorBranch(vars_,"DeDx_Ih", dedxData_FullTracker.dEdx() );
       addToVectorBranch(vars_,"DeDx_IhNOM", dedxData_FullTracker.numberOfMeasurements());
       addToVectorBranch(vars_,"DeDx_IhNoL1", dedxData_FullTracker_noL1.dEdx() );
       addToVectorBranch(vars_,"DeDx_IhNoL1NOM", dedxData_FullTracker_noL1.numberOfMeasurements());//????? 
-      addToVectorBranch(vars_,"DeDx_IhStrip", dedxData_StripOnly.dEdx() );
-
       addToVectorBranch(vars_,"DeDx_Gi", dedxIas_FullTracker.dEdx() );
       addToVectorBranch(vars_,"DeDx_GiStrip", dedxIas_StripOnly.dEdx());
-
       addToVectorBranch(vars_,"DeDx_FiPixel", 1-dedxTool->probQonTrack());
-      addToVectorBranch(vars_,"DeDx_FiPixelNoL1", 1-dedxTool->probQonTrackNoL1());
+
+
+      addToVectorBranch(vars_,"IsoTrack_pt", track->pt());
+      addToVectorBranch(vars_,"IsoTrack_eta", track->eta() );
       addToVectorBranch(vars_,"DeDx_PixelNoL1NOM", dedxTool->numberOfPixelNoL1Measurement());
+      addToVectorBranch(vars_,"IsoTrack_fractionOfValidHits", track->pseudoTrack().validFraction());
       addToVectorBranch(vars_,"DeDx_NoL1NOM", dedxTool->numberOfPixelNoL1Measurement()+dedxIas_StripOnly.numberOfMeasurements());
+      addToVectorBranch(vars_,"IsoTrack_isHighPurityTrack", isHighPurity );
+      addToVectorBranch(vars_,"IsoTrack_normChi2", track->pseudoTrack().normalizedChi2() );
+      addToVectorBranch(vars_,"IsoTrack_dz", track->dz(bestVertex.position()) );
+      addToVectorBranch(vars_,"IsoTrack_dxy", track->dxy(bestVertex.position()) );
+      
+      addToVectorBranch(vars_,"IsoTrack_pfEnergyOverP", pf_energy/track->p());
+      addToVectorBranch(vars_,"IsoTrack_ptErrOverPt2", track->pseudoTrack().ptError()/track->pseudoTrack().pt2() );
+      addToVectorBranch(vars_,"IsoTrack_ptErrOverPt", track->pseudoTrack().ptError()/track->pseudoTrack().pt() );
+      addToVectorBranch(vars_,"DeDx_IhStrip", dedxData_StripOnly.dEdx() );
+      addToVectorBranch(vars_,"DeDx_FiPixelNoL1", 1-dedxTool->probQonTrackNoL1());
+      
 
       nTrack++;
     }//end HSCP with Tracks

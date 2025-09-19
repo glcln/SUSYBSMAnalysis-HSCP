@@ -110,7 +110,6 @@ public:
 
 private:
   void beginJob() override;
-  //void beginRun(edm::Run const &, edm::EventSetup const &) override;
   void analyze(const edm::Event&, const edm::EventSetup&) override;
   void endJob() override;
 
@@ -130,10 +129,6 @@ private:
   edm::EDGetTokenT<edm::View<pat::IsolatedTrack>> trackIsoToken_;
 
   edm::EDGetTokenT<std::vector<pat::Muon> > muonToken_;
-
-  // edm::EDGetTokenT<reco::MuonTimeExtraMap> muonTimeToken_;  // for reading inverse beta
-  // edm::EDGetTokenT<reco::MuonTimeExtraMap> muonDtTimeToken_;
-  // edm::EDGetTokenT<reco::MuonTimeExtraMap> muonCscTimeToken_;
 
   edm::EDGetTokenT<std::vector<pat::PackedGenParticle>> genParticleToken_;
   edm::EDGetTokenT<GenEventInfoProduct>  genEventToken_;
@@ -166,8 +161,8 @@ private:
   edm::EDGetTokenT<l1t::EtSumBxCollection> l1TriggerEtSumToken_;
   edm::EDGetTokenT<std::vector<reco::PFMET>> pfMETToken_;
   edm::EDGetTokenT<std::vector<reco::CaloMET>> caloMETToken_;
-  edm::EDGetTokenT</*std::vector<pat::MET>*/pat::METCollection> metToken_;
-  //
+  edm::EDGetTokenT<pat::METCollection> metToken_;
+  
   edm::EDGetTokenT<edm::TriggerResults> noiseCleaningFilterToken_;
 
   bool tapeRecallOnly_;
@@ -176,10 +171,6 @@ private:
 
   int debug_;
   bool saveDeDxHitInfo_;
-  /*float factorChargeToE_[2] = {3.61e-06, 3.61e-06 * 265};
-  float dEdxSF[2] = {1.0, 1.035};
-  float dEdxK = 2.3;
-  float dEdxC = 3.17;*/
   float dEdxSF_0_, dEdxSF_1_;
   float dEdxSF[2] = {dEdxSF_0_, dEdxSF_1_};
   float dEdxK_;
@@ -193,8 +184,6 @@ private:
   bool puTreatment_, createGiTemplates_, createAndExitGitemplates_;
   vector<int> PuBins_ = std::vector<int>{0,20,25,30,35,200};
   int NbPuBins_ = PuBins_.size() - 1;
-
-  //map<std::string, std::any> vars_vec_;
 
   bool addStripClusterInfo_;
 
