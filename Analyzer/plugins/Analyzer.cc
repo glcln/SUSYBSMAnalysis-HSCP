@@ -16,6 +16,8 @@ Analyzer::Analyzer(const edm::ParameterSet &iConfig) :
     genEventToken_(consumes<GenEventInfoProduct>(iConfig.getParameter<edm::InputTag>("GenCollection"))),
     dedxToken_(consumes<reco::DeDxHitInfoAss>(iConfig.getParameter<edm::InputTag>("DeDxCollection"))),
     pfCandToken_(consumes<pat::PackedCandidateCollection>(iConfig.getParameter<edm::InputTag>("PfCand"))),
+    lostTracksToken_(consumes<pat::PackedCandidateCollection>(iConfig.getParameter<edm::InputTag>("LostTracks"))),
+    verticesToken_(consumes<reco::VertexCollection>(iConfig.getParameter<edm::InputTag>("Vertices"))),
     //
     trackerTopoToken_(esConsumes<TrackerTopology, TrackerTopologyRcd>()),
     geometryToken_(esConsumes<TrackerGeometry, TrackerDigiGeometryRecord>()),
@@ -27,6 +29,7 @@ Analyzer::Analyzer(const edm::ParameterSet &iConfig) :
     //
     l1TriggerEtSumToken_(consumes<l1t::EtSumBxCollection>(iConfig.getParameter<edm::InputTag>("l1TriggerEtSum"))),
     metToken_(consumes<pat::METCollection>(iConfig.getParameter<edm::InputTag>("SlimmedMET"))),
+    puppiMetToken_(consumes<pat::METCollection>(iConfig.getParameter<edm::InputTag>("SlimmedPuppiMET"))),
     //caloMETToken_(consumes<std::vector<reco::CaloMET>>(iConfig.getParameter<edm::InputTag>("CaloMET"))),
     //
     noiseCleaningFilterToken_(consumes<edm::TriggerResults>(iConfig.getParameter<edm::InputTag>("NoiseFilters"))),
@@ -40,6 +43,7 @@ Analyzer::Analyzer(const edm::ParameterSet &iConfig) :
     dEdxTemplate_(iConfig.getUntrackedParameter<string>("DeDxTemplate")),
     //
     addStripClusterInfo_(iConfig.getUntrackedParameter<bool>("AddStripClusterInfo"))
+    //
 {}
 
 
@@ -96,6 +100,9 @@ void Analyzer::beginJob(){
   vars_["RecoPFMET"]       = double {0};
   vars_["RecoPFMET_phi"]   = double {0};
   vars_["RecoPFMET_sigf"]  = double {0};
+  vars_["RecoPuppiMET"]       = double {0};
+  vars_["RecoPuppiMET_phi"]   = double {0};
+  vars_["RecoPuppiMET_sigf"]  = double {0};
   //
   vars_["HLTCaloMET"]           = float {0};
   vars_["HLTCaloMET_phi"]       = float {0};
@@ -171,6 +178,7 @@ void Analyzer::beginJob(){
   vars_["IsoTrack_isPFcand"]        = vector<bool> {};
   vars_["IsoTrack_pfMiniRelIsoChg"] = vector<float>{};
   vars_["IsoTrack_pfMiniRelIsoAll"] = vector<float>{};
+  vars_["IsoTrack_IsoSumPt_dr03"]   = vector<float>{};
   vars_["IsoTrack_pfEnergyOverP"]   = vector<double>{};
   vars_["IsoTrack_pfEcalEnergy"]    = vector<float>{};
   vars_["IsoTrack_pfHcalEnergy"]    = vector<float>{};
@@ -270,8 +278,6 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
   const TrackerTopology* tTopo = &iSetup.getData(trackerTopoToken_);
   const TrackerGeometry* tkGeometry = &iSetup.getData(geometryToken_);
   const PixelClusterParameterEstimator* pixelCPE = &iSetup.getData(trackerPixelCPEToken_);
-  //edm::LogDebug("PIXELCPE") << " Asking for the Pixel-CPE with name " << pixelCPE_ << endl;
-  //edm::LogDebug("PIXELCPE") << " Got a " << typeid(pixelCPE).name() << endl;
 
   // load infos
   const edm::Handle<TriggerResults> trigger = iEvent.getHandle(triggerToken_);
@@ -281,12 +287,12 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
   const edm::Handle<std::vector<pat::Muon>> muonCollection = iEvent.getHandle(muonToken_);
   const edm::Handle<reco::DeDxHitInfoAss> dedxCollection = iEvent.getHandle(dedxToken_);
   const edm::Handle<pat::PackedCandidateCollection> pfCandHandle = iEvent.getHandle(pfCandToken_);
-  // std::vector<pat::PackedCandidateCollection> pfCands = *pfCandHandle;
-  // const pat::PackedCandidateCollection pfCands = &pfCandHandle;
+  const edm::Handle<pat::PackedCandidateCollection> lostTracksHandle = iEvent.getHandle(lostTracksToken_);
+  const edm::Handle<reco::VertexCollection> verticesHandle = iEvent.getHandle(verticesToken_);
+  const reco::Vertex &primaryVertex = verticesHandle->at(0);
 
 
   isData_ = iEvent.isRealData();
-  //-Wunused-variable//uint32_t run_number = iEvent.run();
 
   dEdxSF[0] = dEdxSF_0_;
   dEdxSF[1] = dEdxSF_1_;
@@ -385,7 +391,7 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
   //------------------------------------------------------------------------
   const edm::Handle<pat::METCollection> mets = iEvent.getHandle(metToken_);
   vars_["RecoCaloMET"]=-10; vars_["RecoCaloMET_phi"]=-10; vars_["RecoCaloMET_sigf"]=-10;
-  vars_["RecoPFMET"]=-10;   vars_["RecoPFMET_phi"]=-10;   vars_["RecoPFMET_sigf"]=-10;                           
+  vars_["RecoPFMET"]=-10;   vars_["RecoPFMET_phi"]=-10;   vars_["RecoPFMET_sigf"]=-10;                      
   if (mets.isValid() && !mets->empty()) {
     const pat::MET &met = mets->front();
 
@@ -396,6 +402,16 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
     vars_["RecoPFMET"]      = met.pt();
     vars_["RecoPFMET_phi"]  = met.phi();
     vars_["RecoPFMET_sigf"] = met.significance();
+  }
+
+  const edm::Handle<pat::METCollection> puppimets = iEvent.getHandle(puppiMetToken_);
+  vars_["RecoPuppiMET"]=-10;vars_["RecoPuppiMET_phi"]=-10;vars_["RecoPuppiMET_sigf"] = -10;
+  if (puppimets.isValid() && !puppimets->empty()) {
+    const pat::MET &puppimet = puppimets->front();
+
+    vars_["RecoPuppiMET"]      = puppimet.pt();
+    vars_["RecoPuppiMET_phi"]  = puppimet.phi();
+    vars_["RecoPuppiMET_sigf"] = puppimet.significance();
   }
 
   std::map<std::string, float> met_map = trigtools::getHLTMETOjects(*triggerObjects);
@@ -436,7 +452,6 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
     }
     vars_["Flag_allMETFilters"] = passedAllFilters;
   }
-
    //generator stuff
    std::vector<pat::PackedGenParticle> genColl;
    vector<TLorentzVector> gluino4vec;
@@ -538,23 +553,22 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
     else if (type(hscp) == HSCPType::unknown)
       hscpType = 5;
 
-    //if ((type(hscp) != 1) && (type(hscp) != 0) && (htype(hscp) != 4)) continue;
     if ((type(hscp) != HSCPType::trackerMuon) && (type(hscp) != HSCPType::globalMuon) && (type(hscp) != HSCPType::innerTrack)) continue;
-
-    //TESTME
-    //////if (track.isNull()) continue;
 
     if (hasTrack){
       bool isHighPurity = track->trackHighPurity();
 
     // MiniIsolation
     //------------------------------------------------------------------------
+    HSCPMiniIsolation miniIsoTool(track, *pfCandHandle, *lostTracksHandle, primaryVertex);
+    miniIsoTool.computeMiniIsolation(0.1);
+    miniIsoTool.computeTrackIso_dr03();
+
     bool track_isPF = true;
-    float miniRelIsoChg = isotrack.miniPFIsolation().chargedHadronIso();//track->pt();
-    float miniRelIsoAll = (isotrack.miniPFIsolation().chargedHadronIso()
-                          +isotrack.miniPFIsolation().neutralHadronIso()
-                          +isotrack.miniPFIsolation().photonIso()
-                          +isotrack.miniPFIsolation().puChargedHadronIso());
+    float miniRelIsoChg              = miniIsoTool.getMiniRelIsoChg();
+    float miniRelIsoAll              = miniIsoTool.getMiniRelIsoAll();
+    float track_genTrackIsoSumPt_dr03 = miniIsoTool.getTrackIso_dr03();
+
     //energy of nearest calojet within a given dR;
     float pf_ecalEnergy = isotrack.matchedCaloJetEmEnergy();
     float pf_hcalEnergy = isotrack.matchedCaloJetHadEnergy();
@@ -590,13 +604,6 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
 
       dedxTool->computeProbQ(pixelCPE);
 
-      /*auto dedxMObj_FullTrackerTmp =
-          computedEdx(track->eta(),iSetup, run_number, to_string(year), dedxHits, dEdxSF, localdEdxTemplates = nullptr, 
-                      usePixel = true, useStrip = true, useClusterCleaning, false,
-                      mustBeInside, MaxStripNOM, correctFEDSat, 1, dropLowerDeDxValue = 0.0, &dEdxErr, useTemplateLayer_,
-                      false,0, false, false, true, pixelCPE_, tTopo, tkGeometry, pixelCPE,
-                      track->px(), track->py(), track->pz(), track->charge());*/
-
       addToVectorBranch(vars_,"IsoTrack_charge", track->charge());
       addToVectorBranch(vars_,"IsoTrack_p",  track->p());
       addToVectorBranch(vars_,"IsoTrack_px", track->px());
@@ -610,7 +617,6 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
       addToVectorBranch(vars_,"IsoTrack_numberOfTrackerLayers", track->pseudoTrack().hitPattern().trackerLayersWithMeasurement());
       addToVectorBranch(vars_,"IsoTrack_isPFcand", track_isPF);
       addToVectorBranch(vars_,"IsoTrack_pfMiniRelIsoChg", miniRelIsoChg);
-      addToVectorBranch(vars_,"IsoTrack_pfMiniRelIsoAll", miniRelIsoAll);
       addToVectorBranch(vars_,"IsoTrack_pfEcalEnergy", pf_ecalEnergy);
       addToVectorBranch(vars_,"IsoTrack_pfHcalEnergy", pf_hcalEnergy);
       addToVectorBranch(vars_,"IsoTrack_ptError", track->pseudoTrack().ptError() );
@@ -633,6 +639,8 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
       addToVectorBranch(vars_,"IsoTrack_normChi2", track->pseudoTrack().normalizedChi2() );
       addToVectorBranch(vars_,"IsoTrack_dz", track->dz(bestVertex.position()) );
       addToVectorBranch(vars_,"IsoTrack_dxy", track->dxy(bestVertex.position()) );
+      addToVectorBranch(vars_,"IsoTrack_pfMiniRelIsoAll", miniRelIsoAll);
+      addToVectorBranch(vars_,"IsoTrack_IsoSumPt_dr03", track_genTrackIsoSumPt_dr03);
       
       addToVectorBranch(vars_,"IsoTrack_pfEnergyOverP", pf_energy/track->p());
       addToVectorBranch(vars_,"IsoTrack_ptErrOverPt2", track->pseudoTrack().ptError()/track->pseudoTrack().pt2() );
@@ -745,11 +753,14 @@ void Analyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   desc.add("GenCollection",       edm::InputTag("generator","","RECO"))->setComment("A");
   desc.add("DeDxCollection",      edm::InputTag("isolatedTracks"));
   desc.add("PfCand",              edm::InputTag("packedPFCandidates"));
+  desc.add("LostTracks",          edm::InputTag("lostTracks"));
+  desc.add("Vertices",            edm::InputTag("offlineSlimmedPrimaryVertices"));
   desc.addUntracked("TriggerPaths", std::vector<std::string>{"HLT_Mu50_v"});
   desc.addUntracked("TriggerFilter", true);
   //MET
   desc.add("l1TriggerEtSum",       edm::InputTag("caloStage2Digis","EtSum"));
   desc.add("SlimmedMET",                edm::InputTag("slimmedMETs"));
+  desc.add("SlimmedPuppiMET",           edm::InputTag("slimmedMETsPuppi"));
   //desc.add("CaloMET",              edm::InputTag("caloMet"));
   //
   desc.add("NoiseFilters",   edm::InputTag("TriggerResults","","PAT"));

@@ -89,6 +89,7 @@
 #include "SUSYBSMAnalysis/Analyzer/interface/TrigToolsFuncs.h"
 #include "SUSYBSMAnalysis/HSCP/interface/HSCPDeDxTool.h"
 #include "SUSYBSMAnalysis/HSCP/interface/HelperFunctions.h"
+#include "SUSYBSMAnalysis/HSCP/interface/HSCPMiniIsolation.h"
 ///////
 
 namespace HSCPType {
@@ -135,11 +136,15 @@ private:
   edm::EDGetTokenT<reco::DeDxHitInfoAss> dedxToken_;
 
   edm::EDGetTokenT<pat::PackedCandidateCollection> pfCandToken_;
+  edm::EDGetTokenT<pat::PackedCandidateCollection> lostTracksToken_;
+  edm::EDGetTokenT<reco::VertexCollection> verticesToken_;
 
   edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> trackerTopoToken_;
   edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> geometryToken_;
   std::string pixelCPE_;// = "PixelCPETemplateReco";
   edm::ESGetToken<PixelClusterParameterEstimator, TkPixelCPERecord> trackerPixelCPEToken_;
+
+    
 
   TreeManager  *treeManager_;
   map<std::string, std::any> vars_;
@@ -162,6 +167,7 @@ private:
   edm::EDGetTokenT<std::vector<reco::PFMET>> pfMETToken_;
   edm::EDGetTokenT<std::vector<reco::CaloMET>> caloMETToken_;
   edm::EDGetTokenT<pat::METCollection> metToken_;
+  edm::EDGetTokenT<pat::METCollection> puppiMetToken_;
   
   edm::EDGetTokenT<edm::TriggerResults> noiseCleaningFilterToken_;
 
