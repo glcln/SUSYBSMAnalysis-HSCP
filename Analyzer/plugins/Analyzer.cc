@@ -560,7 +560,7 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
 
     // MiniIsolation
     //------------------------------------------------------------------------
-    HSCPMiniIsolation miniIsoTool(track, *pfCandHandle, *lostTracksHandle, primaryVertex);
+    HSCPMiniIsolation miniIsoTool(track, *pfCandHandle, *lostTracksHandle, primaryVertex);  // peut etre ici: hscp.track()
     miniIsoTool.computeMiniIsolation(0.1);
     miniIsoTool.computeTrackIso_dr03();
 
@@ -575,7 +575,7 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
     float pf_energy = pf_ecalEnergy + pf_hcalEnergy;
 
     if (!isData_){
-      int closestGenIndex = findBestHSCPMatch(genColl, track, 0.015);//dR(Track,HSCP)=0.015
+      int closestGenIndex = findBestHSCPMatch(genColl, track, 0.015);
       if (closestGenIndex < 0) continue;
     }
 
@@ -641,7 +641,6 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
       addToVectorBranch(vars_,"IsoTrack_dxy", track->dxy(bestVertex.position()) );
       addToVectorBranch(vars_,"IsoTrack_pfMiniRelIsoAll", miniRelIsoAll);
       addToVectorBranch(vars_,"IsoTrack_IsoSumPt_dr03", track_genTrackIsoSumPt_dr03);
-      
       addToVectorBranch(vars_,"IsoTrack_pfEnergyOverP", pf_energy/track->p());
       addToVectorBranch(vars_,"IsoTrack_ptErrOverPt2", track->pseudoTrack().ptError()/track->pseudoTrack().pt2() );
       addToVectorBranch(vars_,"IsoTrack_ptErrOverPt", track->pseudoTrack().ptError()/track->pseudoTrack().pt() );

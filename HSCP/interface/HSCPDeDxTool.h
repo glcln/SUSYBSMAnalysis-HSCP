@@ -394,9 +394,7 @@ void HSCPDeDxTool::computedEdx(float* scaleFactors,
 
     // Discriminator probability
     if (templateHisto){
-      //float ChargeOverPathlength = scaleFactor * ClusterCharge / (dedxHits_->pathlength(h) * 10.0 * (isPixel ? 265 : 1));
-      float SF = (isPixel) ? scaleFactors[1] * 265 : scaleFactors[0];
-      float ChargeOverPathlength = SF * ClusterCharge / (dedxHits_->pathlength(h) * 10.0);
+      float ChargeOverPathlength = scaleFactor * ClusterCharge / (dedxHits_->pathlength(h) * 10.0);
 
       int moduleGeometry = (isPixel) ? 15 : static_cast<unsigned int>(SiStripDetId(detid).moduleGeometry());
 
