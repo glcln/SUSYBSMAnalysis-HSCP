@@ -576,7 +576,7 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
     float pf_hcalEnergy = isotrack.matchedCaloJetHadEnergy();
     float pf_energy = pf_ecalEnergy + pf_hcalEnergy;
 
-    if (!isData_){*
+    if (!isData_){
       int closestGenIndex = findBestHSCPMatch(genColl, track, 0.015);
       if (closestGenIndex < 0) continue;
     }
