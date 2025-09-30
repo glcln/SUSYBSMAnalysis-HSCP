@@ -20,6 +20,7 @@ public:
 
     float getTrackIso_dr03() { return track_genTrackIsoSumPt_dr03; }
     void computeTrackIso_dr03();
+    void computeTrackIso_dr03(const edm::View<pat::IsolatedTrack>& isotracks);
 
 private:
     pat::PackedCandidateRef track_;
@@ -107,32 +108,21 @@ void HSCPMiniIsolation::computeMiniIsolation(float dZ_cut)
 }
 
 
-
-void HSCPMiniIsolation::computeTrackIso_dr03()
+void HSCPMiniIsolation::computeTrackIso_dr03(const edm::View<pat::IsolatedTrack>& isotracks)
 {
     track_genTrackIsoSumPt_dr03 = 0.0;
 
-    auto accumulateIsoFromColl = [&](const pat::PackedCandidateCollection* cands) {
-        if (!cands) return;
-        for (auto const& cand : *cands) {
-            if (!cand.hasTrackDetails()) continue;       // must have one track
-            if (cand.charge() == 0) continue;            // only charged tracks
-            reco::Track const& pseudoTk = cand.pseudoTrack();
+    for (auto const& iso : isotracks) {
+        if (iso.charge() == 0) continue;
 
-            // Do not take into account the HSCP candidate itself
-            if (track_.isNonnull() && pseudoTk.extra().isNonnull() && pseudoTk.extra().key() == track_.key())
-                continue;
+        // Exclure le HSCP lui-même
+        if (reco::deltaR(iso.eta(), iso.phi(), track_->eta(), track_->phi()) < 1e-5 &&
+            fabs(iso.pt() - track_->pt()) < 1e-5)
+            continue;
 
-            float pt = cand.pt();
-            float dr = reco::deltaR(cand.eta(), cand.phi(), track_->eta(), track_->phi());
-
-            if (dr < 0.3) {
-                track_genTrackIsoSumPt_dr03 += pt;
-            }
+        float dr = reco::deltaR(iso.eta(), iso.phi(), track_->eta(), track_->phi());
+        if (dr < 0.3) {
+            track_genTrackIsoSumPt_dr03 += iso.pt();
         }
-    };
-
-    // Add contribution from packedPFCands and lostTracks
-    accumulateIsoFromColl(pfCands_);
-    accumulateIsoFromColl(lostTracks_);
+    }
 }

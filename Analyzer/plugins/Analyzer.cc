@@ -562,7 +562,9 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
     //------------------------------------------------------------------------
     HSCPMiniIsolation miniIsoTool(track, *pfCandHandle, *lostTracksHandle, primaryVertex);  // peut etre ici: hscp.track()
     miniIsoTool.computeMiniIsolation(0.1);
-    miniIsoTool.computeTrackIso_dr03();
+
+    auto const& isoTracks = iEvent.get(trackIsoToken_);
+    miniIsoTool.computeTrackIso_dr03(isoTracks);
 
     bool track_isPF = true;
     float miniRelIsoChg              = miniIsoTool.getMiniRelIsoChg();
@@ -574,7 +576,7 @@ void Analyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup) 
     float pf_hcalEnergy = isotrack.matchedCaloJetHadEnergy();
     float pf_energy = pf_ecalEnergy + pf_hcalEnergy;
 
-    if (!isData_){
+    if (!isData_){*
       int closestGenIndex = findBestHSCPMatch(genColl, track, 0.015);
       if (closestGenIndex < 0) continue;
     }
@@ -743,7 +745,7 @@ void Analyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   //desc.add("TriggerSummary",      edm::InputTag("selectedPatTrigger"));
   desc.add("OfflinePVCollection", edm::InputTag("offlineSlimmedPrimaryVertices"));//same content as the AOD
   desc.add("TrackCollection",     edm::InputTag("packedPFCandidates"));
-  desc.add("TrackIsoCollection",  edm::InputTag("packedPFCandidates"));
+  desc.add("TrackIsoCollection",  edm::InputTag("isolatedTracks"));
   desc.add("MuonCollection",      edm::InputTag("slimmedMuons"));
   // desc.add("MuonTimeCollection", edm::InputTag("muons", "combined"))->setComment("combined muon timing information");
   // desc.add("MuonDtTimeCollection", edm::InputTag("muons", "dt"))->setComment("dt");
