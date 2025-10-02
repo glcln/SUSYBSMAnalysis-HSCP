@@ -322,22 +322,3 @@ std::vector<HSCParticle> HSCParticleProducer::getHSCPSeedCollection(edm::Handle<
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(HSCParticleProducer);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
